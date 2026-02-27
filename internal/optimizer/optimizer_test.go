@@ -13,7 +13,7 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// mockKlineProvider returns pre-configured klines.
+// mockKlineProvider 返回预配置的 K 线数据。
 type mockKlineProvider struct {
 	klines []binance.Kline
 }
@@ -22,7 +22,7 @@ func (m *mockKlineProvider) GetHistoricalKlines(symbol, interval string, start, 
 	return m.klines, nil
 }
 
-// mockStrategy for optimizer testing.
+// mockStrategy 用于优化器测试的模拟策略。
 type mockStrategy struct {
 	name   string
 	params strategy.StrategyParams
@@ -51,12 +51,12 @@ func (m *mockStrategy) EstimateFee(price, qty, rate decimal.Decimal) decimal.Dec
 }
 
 // Feature: binance-trading-system, Property 22: 优化器以净收益率为目标
-// For any two sets of parameters' backtest results, the optimizer should select
-// the parameter set with higher net profit rate.
+// 对于任意两组参数的回测结果，优化器应选择
+// 净利润更高的参数集。
 // **Validates: Requirements 11.4**
 func TestProperty22_OptimizerNetProfitObjective(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate two random net profits
+		// 生成两个随机净利润
 		profit1 := decimal.NewFromFloat(rapid.Float64Range(-1000, 1000).Draw(t, "profit1"))
 		profit2 := decimal.NewFromFloat(rapid.Float64Range(-1000, 1000).Draw(t, "profit2"))
 
@@ -73,13 +73,13 @@ func TestProperty22_OptimizerNetProfitObjective(t *testing.T) {
 
 		best := SelectBest(candidates)
 
-		// If both are negative, no best should be selected
+		// 如果两者都为负，则不应选择任何候选参数
 		if profit1.IsNegative() && profit2.IsNegative() {
 			assert.Nil(t, best, "no candidate should be selected when all have negative net profit")
 			return
 		}
 
-		// Otherwise, the one with higher net profit should be selected
+		// 否则，应选择净利润更高的那个
 		if best != nil {
 			higherProfit := profit1
 			if profit2.GreaterThan(profit1) {
@@ -93,11 +93,11 @@ func TestProperty22_OptimizerNetProfitObjective(t *testing.T) {
 }
 
 // Feature: binance-trading-system, Property 23: 优化器参数变化幅度限制
-// For any parameter optimization, each parameter's change ratio must not exceed 30%.
+// 对于任何参数优化，每个参数的变化比率不得超过 30%。
 // **Validates: Requirements 11.7**
 func TestProperty23_OptimizerParamChangeLimit(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate random original parameters
+		// 生成随机原始参数
 		numParams := rapid.IntRange(1, 5).Draw(t, "numParams")
 		original := make(strategy.StrategyParams)
 		proposed := make(strategy.StrategyParams)
@@ -105,7 +105,7 @@ func TestProperty23_OptimizerParamChangeLimit(t *testing.T) {
 		for i := 0; i < numParams; i++ {
 			name := rapid.StringMatching(`[a-z]{3,8}`).Draw(t, "paramName")
 			origVal := decimal.NewFromFloat(rapid.Float64Range(1, 100).Draw(t, "origVal"))
-			// Propose a value that may exceed the 30% limit
+			// 提议一个可能超过 30% 限制的值
 			propVal := decimal.NewFromFloat(rapid.Float64Range(0.1, 200).Draw(t, "propVal"))
 			original[name] = origVal
 			proposed[name] = propVal
@@ -114,7 +114,7 @@ func TestProperty23_OptimizerParamChangeLimit(t *testing.T) {
 		opt := NewStrategyOptimizer(nil, nil, DefaultOptimizerConfig())
 		clamped := opt.ClampParams(original, proposed)
 
-		// Verify each parameter's change ratio <= 30%
+		// 验证每个参数的变化比率 <= 30%
 		for name, origVal := range original {
 			clampedVal := clamped[name]
 			if origVal.IsZero() {
@@ -129,8 +129,8 @@ func TestProperty23_OptimizerParamChangeLimit(t *testing.T) {
 }
 
 // Feature: binance-trading-system, Property 24: 优化器决策正确性
-// When the best candidate has positive net profit and outperforms current, params should be updated.
-// When the best candidate has negative net profit, current params should be kept.
+// 当最佳候选参数具有正净利润且优于当前参数时，应更新参数。
+// 当最佳候选参数具有负净利润时，应保留当前参数。
 // **Validates: Requirements 11.5, 11.8**
 func TestProperty24_OptimizerDecisionCorrectness(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
@@ -143,16 +143,16 @@ func TestProperty24_OptimizerDecisionCorrectness(t *testing.T) {
 		shouldApply := ShouldApply(currentResult, bestResult)
 
 		if bestProfit.IsNegative() || bestProfit.IsZero() {
-			// Negative or zero net profit → should NOT apply
+			// 负或零净利润 → 不应应用
 			assert.False(t, shouldApply,
 				"should not apply when best net profit (%s) is non-positive", bestProfit.String())
 		} else if bestProfit.GreaterThan(currentProfit) {
-			// Positive and better than current → should apply
+			// 正且优于当前 → 应应用
 			assert.True(t, shouldApply,
 				"should apply when best profit (%s) > current profit (%s)",
 				bestProfit.String(), currentProfit.String())
 		} else {
-			// Positive but not better → should NOT apply
+			// 正但不优于当前 → 不应应用
 			assert.False(t, shouldApply,
 				"should not apply when best profit (%s) <= current profit (%s)",
 				bestProfit.String(), currentProfit.String())
@@ -185,7 +185,7 @@ func TestGenerateCandidates(t *testing.T) {
 	candidates := opt.GenerateCandidates(params, 5)
 	assert.Len(t, candidates, 5)
 
-	// All candidates should have the same parameter names
+	// 所有候选参数应具有相同的参数名称
 	for _, c := range candidates {
 		assert.Contains(t, c, "period")
 		assert.Contains(t, c, "level")

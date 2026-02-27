@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// OptimizationRecord represents the optimization_records table.
+// OptimizationRecord 表示 optimization_records 数据表。
 type OptimizationRecord struct {
 	ID            int64           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	StrategyName  string          `gorm:"column:strategy_name;type:varchar(50);not null;index:idx_optimization_records_strategy_name" json:"strategy_name"`
@@ -18,7 +18,7 @@ type OptimizationRecord struct {
 	CreatedAt     time.Time       `gorm:"column:created_at;autoCreateTime;index:idx_optimization_records_created_at" json:"created_at"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (OptimizationRecord) TableName() string {
 	return "optimization_records"
 }

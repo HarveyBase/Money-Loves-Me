@@ -9,9 +9,8 @@ import (
 	"io"
 )
 
-// Encrypt encrypts plaintext using AES-256-GCM with the given 32-byte key.
-// It returns a base64-encoded ciphertext string containing the nonce prepended
-// to the encrypted data.
+// Encrypt 使用 AES-256-GCM 和给定的 32 字节密钥加密明文。
+// 返回一个 base64 编码的密文字符串，其中 nonce 前置于加密数据之前。
 func Encrypt(key []byte, plaintext string) (string, error) {
 	if len(key) != 32 {
 		return "", fmt.Errorf("key must be 32 bytes for AES-256, got %d", len(key))
@@ -32,14 +31,14 @@ func Encrypt(key []byte, plaintext string) (string, error) {
 		return "", fmt.Errorf("failed to generate nonce: %w", err)
 	}
 
-	// Seal appends the encrypted data to nonce, so the result is nonce + ciphertext + tag.
+	// Seal 将加密数据追加到 nonce 之后，因此结果为 nonce + 密文 + 标签。
 	sealed := gcm.Seal(nonce, nonce, []byte(plaintext), nil)
 
 	return base64.StdEncoding.EncodeToString(sealed), nil
 }
 
-// Decrypt decrypts a base64-encoded ciphertext produced by Encrypt using
-// AES-256-GCM with the given 32-byte key.
+// Decrypt 使用 AES-256-GCM 和给定的 32 字节密钥解密由 Encrypt 生成的
+// base64 编码密文。
 func Decrypt(key []byte, ciphertextB64 string) (string, error) {
 	if len(key) != 32 {
 		return "", fmt.Errorf("key must be 32 bytes for AES-256, got %d", len(key))

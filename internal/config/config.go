@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// Config is the root configuration structure for the trading system.
+// Config 是交易系统的根配置结构体。
 type Config struct {
 	Server    ServerConfig    `yaml:"server"    mapstructure:"server"`
 	Binance   BinanceConfig   `yaml:"binance"   mapstructure:"binance"`
@@ -22,44 +22,45 @@ type Config struct {
 	Optimizer OptimizerConfig `yaml:"optimizer" mapstructure:"optimizer"`
 }
 
-// ServerConfig holds HTTP server settings.
+// ServerConfig 保存 HTTP 服务器设置。
 type ServerConfig struct {
 	Host string `yaml:"host" mapstructure:"host"`
 	Port int    `yaml:"port" mapstructure:"port"`
 	Mode string `yaml:"mode" mapstructure:"mode"` // debug, release, test
 }
 
-// BinanceConfig holds Binance API connection settings.
+// BinanceConfig 保存币安 API 连接设置。
 type BinanceConfig struct {
-	APIKey    string `yaml:"api_key"    mapstructure:"api_key"`    // AES-256 encrypted
-	SecretKey string `yaml:"secret_key" mapstructure:"secret_key"` // AES-256 encrypted
+	APIKey    string `yaml:"api_key"    mapstructure:"api_key"`    // AES-256 加密
+	SecretKey string `yaml:"secret_key" mapstructure:"secret_key"` // AES-256 加密
 	BaseURL   string `yaml:"base_url"   mapstructure:"base_url"`
 	WsURL     string `yaml:"ws_url"     mapstructure:"ws_url"`
 }
 
-// DatabaseConfig holds MySQL connection settings.
+// DatabaseConfig 保存数据库连接设置，支持 MySQL 和 SQLite。
 type DatabaseConfig struct {
+	Driver   string `yaml:"driver"   mapstructure:"driver"` // mysql 或 sqlite，默认 mysql
 	Host     string `yaml:"host"     mapstructure:"host"`
 	Port     int    `yaml:"port"     mapstructure:"port"`
 	User     string `yaml:"user"     mapstructure:"user"`
-	Password string `yaml:"password" mapstructure:"password"` // AES-256 encrypted
+	Password string `yaml:"password" mapstructure:"password"` // AES-256 加密
 	DBName   string `yaml:"db_name"  mapstructure:"db_name"`
 }
 
-// LogConfig holds logging settings.
+// LogConfig 保存日志设置。
 type LogConfig struct {
 	Level      string `yaml:"level"       mapstructure:"level"` // DEBUG, INFO, WARN, ERROR
 	FilePath   string `yaml:"file_path"   mapstructure:"file_path"`
-	MaxSizeMB  int    `yaml:"max_size_mb" mapstructure:"max_size_mb"`   // max single file size in MB
-	MaxAgeDays int    `yaml:"max_age_days" mapstructure:"max_age_days"` // retention in days
+	MaxSizeMB  int    `yaml:"max_size_mb" mapstructure:"max_size_mb"`   // 单个文件最大大小（MB）
+	MaxAgeDays int    `yaml:"max_age_days" mapstructure:"max_age_days"` // 保留天数
 }
 
-// TradingConfig holds default trading settings.
+// TradingConfig 保存默认交易设置。
 type TradingConfig struct {
-	DefaultPairs []string `yaml:"default_pairs" mapstructure:"default_pairs"` // e.g. ["BTCUSDT", "ETHUSDT"]
+	DefaultPairs []string `yaml:"default_pairs" mapstructure:"default_pairs"` // 例如 ["BTCUSDT", "ETHUSDT"]
 }
 
-// RiskConfig holds risk management settings.
+// RiskConfig 保存风控管理设置。
 type RiskConfig struct {
 	MaxOrderAmount     decimal.Decimal            `yaml:"max_order_amount"     mapstructure:"max_order_amount"`
 	MaxDailyLoss       decimal.Decimal            `yaml:"max_daily_loss"       mapstructure:"max_daily_loss"`
@@ -67,14 +68,14 @@ type RiskConfig struct {
 	MaxPositionPercent map[string]decimal.Decimal `yaml:"max_position_percent" mapstructure:"max_position_percent"`
 }
 
-// OptimizerConfig holds strategy optimizer settings.
+// OptimizerConfig 保存策略优化器设置。
 type OptimizerConfig struct {
 	Interval       time.Duration `yaml:"interval"         mapstructure:"interval"`
 	LookbackDays   int           `yaml:"lookback_days"    mapstructure:"lookback_days"`
 	MaxParamChange float64       `yaml:"max_param_change" mapstructure:"max_param_change"` // 0.3 = 30%
 }
 
-// Load reads the configuration from the given YAML file path using Viper.
+// Load 使用 Viper 从给定的 YAML 文件路径读取配置。
 func Load(path string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(path)
@@ -101,8 +102,8 @@ func Load(path string) (*Config, error) {
 	return &cfg, nil
 }
 
-// stringToDecimalHookFunc returns a mapstructure decode hook that converts
-// string values to shopspring/decimal.Decimal.
+// stringToDecimalHookFunc 返回一个 mapstructure 解码钩子，
+// 用于将字符串值转换为 shopspring/decimal.Decimal。
 func stringToDecimalHookFunc() mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
 		if t != reflect.TypeOf(decimal.Decimal{}) {
@@ -123,16 +124,16 @@ func stringToDecimalHookFunc() mapstructure.DecodeHookFunc {
 	}
 }
 
-// Validate checks that all required fields are present and valid.
+// Validate 检查所有必填字段是否存在且有效。
 func (c *Config) Validate() error {
 	var errs []string
 
-	// Server validation
+	// 服务器验证
 	if c.Server.Port <= 0 || c.Server.Port > 65535 {
 		errs = append(errs, "server.port must be between 1 and 65535")
 	}
 
-	// Binance validation
+	// 币安验证
 	if c.Binance.APIKey == "" {
 		errs = append(errs, "binance.api_key is required")
 	}
@@ -146,24 +147,26 @@ func (c *Config) Validate() error {
 		errs = append(errs, "binance.ws_url is required")
 	}
 
-	// Database validation
-	if c.Database.Host == "" {
-		errs = append(errs, "database.host is required")
-	}
-	if c.Database.Port <= 0 || c.Database.Port > 65535 {
-		errs = append(errs, "database.port must be between 1 and 65535")
-	}
-	if c.Database.User == "" {
-		errs = append(errs, "database.user is required")
-	}
-	if c.Database.Password == "" {
-		errs = append(errs, "database.password is required")
-	}
-	if c.Database.DBName == "" {
-		errs = append(errs, "database.db_name is required")
+	// 数据库验证（SQLite 模式下跳过 MySQL 相关验证）
+	if c.Database.Driver != "sqlite" {
+		if c.Database.Host == "" {
+			errs = append(errs, "database.host is required")
+		}
+		if c.Database.Port <= 0 || c.Database.Port > 65535 {
+			errs = append(errs, "database.port must be between 1 and 65535")
+		}
+		if c.Database.User == "" {
+			errs = append(errs, "database.user is required")
+		}
+		if c.Database.Password == "" {
+			errs = append(errs, "database.password is required")
+		}
+		if c.Database.DBName == "" {
+			errs = append(errs, "database.db_name is required")
+		}
 	}
 
-	// Log validation
+	// 日志验证
 	validLogLevels := map[string]bool{"DEBUG": true, "INFO": true, "WARN": true, "ERROR": true}
 	if !validLogLevels[strings.ToUpper(c.Log.Level)] {
 		errs = append(errs, "log.level must be one of: DEBUG, INFO, WARN, ERROR")
@@ -175,12 +178,12 @@ func (c *Config) Validate() error {
 		errs = append(errs, "log.max_age_days must be positive")
 	}
 
-	// Trading validation
+	// 交易验证
 	if len(c.Trading.DefaultPairs) == 0 {
 		errs = append(errs, "trading.default_pairs must contain at least one pair")
 	}
 
-	// Risk validation
+	// 风控验证
 	if c.Risk.MaxOrderAmount.IsNegative() || c.Risk.MaxOrderAmount.IsZero() {
 		errs = append(errs, "risk.max_order_amount must be positive")
 	}
@@ -188,7 +191,7 @@ func (c *Config) Validate() error {
 		errs = append(errs, "risk.max_daily_loss must be positive")
 	}
 
-	// Optimizer validation
+	// 优化器验证
 	if c.Optimizer.Interval <= 0 {
 		errs = append(errs, "optimizer.interval must be positive")
 	}

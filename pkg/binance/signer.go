@@ -6,24 +6,24 @@ import (
 	"encoding/hex"
 )
 
-// HMACSigner provides HMAC-SHA256 signing for Binance API requests.
+// HMACSigner 提供用于 Binance API 请求的 HMAC-SHA256 签名功能。
 type HMACSigner struct {
 	secretKey []byte
 }
 
-// NewHMACSigner creates a new HMACSigner with the given secret key.
+// NewHMACSigner 使用给定的密钥创建一个新的 HMACSigner。
 func NewHMACSigner(secretKey []byte) *HMACSigner {
 	return &HMACSigner{secretKey: secretKey}
 }
 
-// Sign returns the hex-encoded HMAC-SHA256 signature of the given payload.
+// Sign 返回给定载荷的十六进制编码 HMAC-SHA256 签名。
 func (s *HMACSigner) Sign(payload string) string {
 	mac := hmac.New(sha256.New, s.secretKey)
 	mac.Write([]byte(payload))
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
-// Verify checks whether the given hex-encoded signature is valid for the payload.
+// Verify 检查给定的十六进制编码签名对于该载荷是否有效。
 func (s *HMACSigner) Verify(payload, signature string) bool {
 	expected := s.Sign(payload)
 	return hmac.Equal([]byte(expected), []byte(signature))

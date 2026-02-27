@@ -91,7 +91,7 @@ func TestLogger_WritesToFile(t *testing.T) {
 		t.Fatalf("log entry is not valid JSON: %v\nraw: %s", err, string(data))
 	}
 
-	// Verify all required fields are present
+	// 验证所有必需字段是否存在
 	if _, ok := entry["timestamp"]; !ok {
 		t.Error("missing 'timestamp' field")
 	}
@@ -143,7 +143,7 @@ func TestLogger_AllLogMethods(t *testing.T) {
 		t.Fatalf("failed to read log file: %v", err)
 	}
 
-	// The file should contain multiple JSON lines
+	// 文件应包含多行 JSON
 	lines := splitJSONLines(data)
 	if len(lines) != 4 {
 		t.Fatalf("expected 4 log entries, got %d", len(lines))
@@ -176,7 +176,7 @@ func TestLogger_DefaultRotationValues(t *testing.T) {
 	tmpDir := t.TempDir()
 	logFile := filepath.Join(tmpDir, "defaults.log")
 
-	// Zero values should use defaults (100MB, 30 days)
+	// 零值应使用默认值（100MB，30 天）
 	cfg := config.LogConfig{
 		Level:      "INFO",
 		FilePath:   logFile,
@@ -198,7 +198,7 @@ func TestLogger_DefaultRotationValues(t *testing.T) {
 }
 
 func TestLogger_NoFilePath(t *testing.T) {
-	// When no file path is set, logger should still work (stdout only)
+	// 未设置文件路径时，日志记录器应仍能工作（仅标准输出）
 	cfg := config.LogConfig{
 		Level:      "INFO",
 		MaxSizeMB:  100,
@@ -210,7 +210,7 @@ func TestLogger_NoFilePath(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Should not panic
+	// 不应 panic
 	l.Info("stdout only message")
 	l.Sync()
 }
@@ -226,7 +226,7 @@ func TestLogger_Zap(t *testing.T) {
 	}
 }
 
-// splitJSONLines splits raw bytes into individual JSON lines, skipping empty lines.
+// splitJSONLines 将原始字节分割为单独的 JSON 行，跳过空行。
 func splitJSONLines(data []byte) [][]byte {
 	var lines [][]byte
 	start := 0
@@ -253,16 +253,16 @@ func splitJSONLines(data []byte) [][]byte {
 // Property 30: 对于任意日志条目，必须包含时间戳、模块名称、日志级别和日志内容，且均不为空
 func TestProperty30_StructuredLogCompleteness(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate a random non-empty alphanumeric module name
+		// 生成一个随机的非空字母数字模块名称
 		module := rapid.StringMatching(`[a-zA-Z][a-zA-Z0-9]{0,29}`).Draw(t, "module")
 
-		// Generate a random non-empty log message
+		// 生成一个随机的非空日志消息
 		message := rapid.StringMatching(`[a-zA-Z0-9 ]{1,100}`).Draw(t, "message")
 
-		// Randomly pick a log level
+		// 随机选择一个日志级别
 		level := rapid.SampledFrom([]string{"DEBUG", "INFO", "WARN", "ERROR"}).Draw(t, "level")
 
-		// Create a temp dir for log output
+		// 创建临时目录用于日志输出
 		tmpDir, err := os.MkdirTemp("", "prop30-*")
 		if err != nil {
 			t.Fatalf("failed to create temp dir: %v", err)
@@ -271,7 +271,7 @@ func TestProperty30_StructuredLogCompleteness(t *testing.T) {
 		logFile := filepath.Join(tmpDir, "prop30.log")
 
 		cfg := config.LogConfig{
-			Level:      "DEBUG", // Use DEBUG so all levels are captured
+			Level:      "DEBUG", // 使用 DEBUG 以便捕获所有级别的日志
 			FilePath:   logFile,
 			MaxSizeMB:  100,
 			MaxAgeDays: 30,
@@ -282,7 +282,7 @@ func TestProperty30_StructuredLogCompleteness(t *testing.T) {
 			t.Fatalf("failed to create logger: %v", err)
 		}
 
-		// Write the log entry at the chosen level
+		// 以选定的级别写入日志条目
 		switch level {
 		case "DEBUG":
 			l.Debug(message)
@@ -295,7 +295,7 @@ func TestProperty30_StructuredLogCompleteness(t *testing.T) {
 		}
 		l.Sync()
 
-		// Read and parse the log file
+		// 读取并解析日志文件
 		data, err := os.ReadFile(logFile)
 		if err != nil {
 			t.Fatalf("failed to read log file: %v", err)
@@ -306,13 +306,13 @@ func TestProperty30_StructuredLogCompleteness(t *testing.T) {
 			t.Fatal("no log entries found in file")
 		}
 
-		// Parse the last line (our log entry)
+		// 解析最后一行（我们的日志条目）
 		var entry map[string]any
 		if err := json.Unmarshal(lines[len(lines)-1], &entry); err != nil {
 			t.Fatalf("log entry is not valid JSON: %v", err)
 		}
 
-		// Assert all 4 fields are present and non-empty
+		// 断言所有 4 个字段存在且非空
 		timestamp, ok := entry["timestamp"].(string)
 		if !ok || timestamp == "" {
 			t.Fatalf("timestamp field missing or empty: %v", entry["timestamp"])
@@ -333,7 +333,7 @@ func TestProperty30_StructuredLogCompleteness(t *testing.T) {
 			t.Fatalf("message field missing or empty: %v", entry["message"])
 		}
 
-		// Verify the values match what we wrote
+		// 验证值与写入的内容匹配
 		if levelVal != level {
 			t.Fatalf("expected level %q, got %q", level, levelVal)
 		}

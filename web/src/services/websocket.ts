@@ -14,7 +14,7 @@ class WSClient {
         const msg = JSON.parse(event.data)
         const handlers = this.handlers.get(msg.type) || []
         handlers.forEach((h) => h(msg.data))
-      } catch { /* ignore parse errors */ }
+      } catch { /* 忽略解析错误 */ }
     }
 
     this.ws.onclose = () => {

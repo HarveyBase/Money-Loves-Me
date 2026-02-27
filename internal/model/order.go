@@ -6,7 +6,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Order represents the orders table.
+// Order 表示 orders 数据表。
 type Order struct {
 	ID             int64           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Symbol         string          `gorm:"column:symbol;type:varchar(20);not null;index:idx_orders_symbol" json:"symbol"`
@@ -23,11 +23,11 @@ type Order struct {
 	CreatedAt      time.Time       `gorm:"column:created_at;autoCreateTime;index:idx_orders_created_at" json:"created_at"`
 	UpdatedAt      time.Time       `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 
-	// Has-many relationship
+	// 一对多（Has-many）关联关系
 	Trades []Trade `gorm:"foreignKey:OrderID;references:ID" json:"trades,omitempty"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (Order) TableName() string {
 	return "orders"
 }

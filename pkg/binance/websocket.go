@@ -16,46 +16,46 @@ import (
 )
 
 const (
-	// wsPingInterval is how often we send a ping frame to keep the connection alive.
+	// wsPingInterval 是发送 ping 帧以保持连接活跃的频率。
 	wsPingInterval = 30 * time.Second
-	// wsReadTimeout is the maximum time to wait for a pong or any message before
-	// considering the connection dead.
+	// wsReadTimeout 是等待 pong 或任何消息的最大时间，
+	// 超过此时间则认为连接已断开。
 	wsReadTimeout = 60 * time.Second
-	// wsReconnectBaseDelay is the initial delay before the first reconnect attempt.
+	// wsReconnectBaseDelay 是首次重连尝试前的初始延迟。
 	wsReconnectBaseDelay = 3 * time.Second
-	// wsMaxReconnectRetries is the maximum number of consecutive reconnect attempts.
+	// wsMaxReconnectRetries 是连续重连尝试的最大次数。
 	wsMaxReconnectRetries = 5
 )
 
-// KlineHandler is called when a kline update is received.
+// KlineHandler 在收到 K 线更新时被调用。
 type KlineHandler func(event *WsKlineEvent)
 
-// OrderBookHandler is called when an order book update is received.
+// OrderBookHandler 在收到订单簿更新时被调用。
 type OrderBookHandler func(event *WsOrderBookEvent)
 
-// UserDataHandler is called when a user data event is received.
+// UserDataHandler 在收到用户数据事件时被调用。
 type UserDataHandler func(event *WsUserDataEvent)
 
-// WsKlineEvent represents a kline/candlestick WebSocket event.
+// WsKlineEvent 表示一个 K 线/蜡烛图 WebSocket 事件。
 type WsKlineEvent struct {
 	Symbol   string `json:"s"`
 	Interval string `json:"i"`
 	Kline    Kline
 }
 
-// WsOrderBookEvent represents a depth/order book WebSocket event.
+// WsOrderBookEvent 表示一个深度/订单簿 WebSocket 事件。
 type WsOrderBookEvent struct {
 	Symbol string `json:"s"`
 	Book   OrderBook
 }
 
-// WsUserDataEvent represents a user data stream event (order updates, balance changes, etc.).
+// WsUserDataEvent 表示一个用户数据流事件（订单更新、余额变动等）。
 type WsUserDataEvent struct {
 	EventType string          `json:"e"`
 	RawData   json.RawMessage `json:"-"`
 }
 
-// subscriptionKind identifies the type of a subscription.
+// subscriptionKind 标识订阅的类型。
 type subscriptionKind int
 
 const (
@@ -64,19 +64,19 @@ const (
 	subUserData
 )
 
-// subscription stores everything needed to re-subscribe after a reconnect.
+// subscription 存储重连后重新订阅所需的全部信息。
 type subscription struct {
 	kind     subscriptionKind
-	stream   string // e.g. "btcusdt@kline_1m"
+	stream   string // 例如 "btcusdt@kline_1m"
 	symbol   string
-	interval string // only for kline
+	interval string // 仅用于 K 线
 	klineH   KlineHandler
 	bookH    OrderBookHandler
 	userH    UserDataHandler
 }
 
-// WSManager manages a single multiplexed WebSocket connection to Binance,
-// handling heartbeat, timeout detection, subscriptions, and auto-reconnect.
+// WSManager 管理与 Binance 的单个多路复用 WebSocket 连接，
+// 处理心跳、超时检测、订阅和自动重连。
 type WSManager struct {
 	baseURL string
 	log     *logger.Logger
@@ -89,8 +89,8 @@ type WSManager struct {
 	isConnected bool
 }
 
-// NewWSManager creates a new WebSocket manager. It does NOT connect immediately;
-// the connection is established lazily on the first subscription or by calling Connect.
+// NewWSManager 创建一个新的 WebSocket 管理器。它不会立即连接；
+// 连接会在首次订阅时或调用 Connect 时延迟建立。
 func NewWSManager(wsURL string, log *logger.Logger) *WSManager {
 	return &WSManager{
 		baseURL: wsURL,
@@ -101,7 +101,7 @@ func NewWSManager(wsURL string, log *logger.Logger) *WSManager {
 	}
 }
 
-// Connect establishes the WebSocket connection and starts the read/heartbeat loops.
+// Connect 建立 WebSocket 连接并启动读取/心跳循环。
 func (m *WSManager) Connect() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -120,14 +120,14 @@ func (m *WSManager) Connect() error {
 	return nil
 }
 
-// Close gracefully shuts down the WebSocket connection and stops all loops.
+// Close 优雅地关闭 WebSocket 连接并停止所有循环。
 func (m *WSManager) Close() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	select {
 	case <-m.stopCh:
-		// already closed
+		// 已经关闭
 		return nil
 	default:
 		close(m.stopCh)
@@ -139,19 +139,19 @@ func (m *WSManager) Close() error {
 	}
 	m.isConnected = false
 
-	// Wait for loops to finish.
+	// 等待循环结束。
 	<-m.done
 	return nil
 }
 
-// IsConnected reports whether the WebSocket connection is currently active.
+// IsConnected 报告 WebSocket 连接当前是否处于活跃状态。
 func (m *WSManager) IsConnected() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.isConnected
 }
 
-// Subscriptions returns a snapshot of the current stream names.
+// Subscriptions 返回当前流名称的快照。
 func (m *WSManager) Subscriptions() []string {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -162,7 +162,7 @@ func (m *WSManager) Subscriptions() []string {
 	return names
 }
 
-// SubscribeKline subscribes to kline updates for the given symbol and interval.
+// SubscribeKline 订阅指定交易对和时间间隔的 K 线更新。
 func (m *WSManager) SubscribeKline(symbol, interval string, handler KlineHandler) error {
 	if handler == nil {
 		return apperrors.NewAppError(apperrors.ErrValidation, "kline handler must not be nil", "websocket", nil)
@@ -191,7 +191,7 @@ func (m *WSManager) SubscribeKline(symbol, interval string, handler KlineHandler
 	return m.sendSubscribe(stream)
 }
 
-// SubscribeOrderBook subscribes to order book depth updates for the given symbol.
+// SubscribeOrderBook 订阅指定交易对的订单簿深度更新。
 func (m *WSManager) SubscribeOrderBook(symbol string, handler OrderBookHandler) error {
 	if handler == nil {
 		return apperrors.NewAppError(apperrors.ErrValidation, "order book handler must not be nil", "websocket", nil)
@@ -219,7 +219,7 @@ func (m *WSManager) SubscribeOrderBook(symbol string, handler OrderBookHandler) 
 	return m.sendSubscribe(stream)
 }
 
-// SubscribeUserData subscribes to the user data stream using the given listen key.
+// SubscribeUserData 使用给定的监听密钥订阅用户数据流。
 func (m *WSManager) SubscribeUserData(handler UserDataHandler) error {
 	if handler == nil {
 		return apperrors.NewAppError(apperrors.ErrValidation, "user data handler must not be nil", "websocket", nil)
@@ -246,11 +246,11 @@ func (m *WSManager) SubscribeUserData(handler UserDataHandler) error {
 	return m.sendSubscribe(stream)
 }
 
-// --- internal methods ---
+// --- 内部方法 ---
 
-// dialLocked establishes the raw WebSocket connection. Caller must hold m.mu.
+// dialLocked 建立原始 WebSocket 连接。调用者必须持有 m.mu 锁。
 func (m *WSManager) dialLocked() error {
-	// Build the combined stream URL.
+	// 构建组合流 URL。
 	streams := m.streamNames()
 	wsEndpoint := m.baseURL + "/ws"
 	if len(streams) > 0 {
@@ -268,8 +268,8 @@ func (m *WSManager) dialLocked() error {
 	return nil
 }
 
-// streamNames returns the list of stream names from current subscriptions.
-// Caller must hold m.mu (at least RLock).
+// streamNames 返回当前订阅的流名称列表。
+// 调用者必须持有 m.mu 锁（至少 RLock）。
 func (m *WSManager) streamNames() []string {
 	names := make([]string, 0, len(m.subs))
 	for s := range m.subs {
@@ -278,7 +278,7 @@ func (m *WSManager) streamNames() []string {
 	return names
 }
 
-// sendSubscribe sends a SUBSCRIBE request over the WebSocket for the given stream.
+// sendSubscribe 通过 WebSocket 发送指定流的 SUBSCRIBE 请求。
 func (m *WSManager) sendSubscribe(stream string) error {
 	m.mu.RLock()
 	conn := m.conn
@@ -303,7 +303,7 @@ func (m *WSManager) sendSubscribe(stream string) error {
 	return nil
 }
 
-// resubscribeAll sends SUBSCRIBE requests for every registered subscription.
+// resubscribeAll 为每个已注册的订阅发送 SUBSCRIBE 请求。
 func (m *WSManager) resubscribeAll() error {
 	m.mu.RLock()
 	streams := m.streamNames()
@@ -317,7 +317,7 @@ func (m *WSManager) resubscribeAll() error {
 	return nil
 }
 
-// heartbeatLoop sends periodic ping frames and is responsible for detecting timeouts.
+// heartbeatLoop 定期发送 ping 帧，并负责检测超时。
 func (m *WSManager) heartbeatLoop() {
 	ticker := time.NewTicker(wsPingInterval)
 	defer ticker.Stop()
@@ -346,8 +346,8 @@ func (m *WSManager) heartbeatLoop() {
 	}
 }
 
-// readLoop reads messages from the WebSocket and dispatches them to handlers.
-// When the connection drops it triggers reconnection.
+// readLoop 从 WebSocket 读取消息并将其分发给处理器。
+// 当连接断开时触发重连。
 func (m *WSManager) readLoop() {
 	defer close(m.done)
 
@@ -366,7 +366,7 @@ func (m *WSManager) readLoop() {
 			return
 		}
 
-		// Set read deadline for timeout detection.
+		// 设置读取截止时间用于超时检测。
 		_ = conn.SetReadDeadline(time.Now().Add(wsReadTimeout))
 
 		_, message, err := conn.ReadMessage()
@@ -386,16 +386,16 @@ func (m *WSManager) readLoop() {
 	}
 }
 
-// dispatch routes a raw WebSocket message to the appropriate handler.
+// dispatch 将原始 WebSocket 消息路由到相应的处理器。
 func (m *WSManager) dispatch(raw []byte) {
-	// Binance combined stream format: {"stream":"<stream>","data":{...}}
+	// Binance 组合流格式：{"stream":"<stream>","data":{...}}
 	var envelope struct {
 		Stream string          `json:"stream"`
 		Data   json.RawMessage `json:"data"`
 	}
 
 	if err := json.Unmarshal(raw, &envelope); err != nil {
-		// Might be a direct (non-combined) message or a subscription ack.
+		// 可能是直接（非组合）消息或订阅确认。
 		return
 	}
 
@@ -421,7 +421,7 @@ func (m *WSManager) dispatch(raw []byte) {
 	}
 }
 
-// handleKlineMessage parses and dispatches a kline event.
+// handleKlineMessage 解析并分发 K 线事件。
 func (m *WSManager) handleKlineMessage(sub *subscription, data json.RawMessage) {
 	var raw struct {
 		Symbol string `json:"s"`
@@ -465,7 +465,7 @@ func (m *WSManager) handleKlineMessage(sub *subscription, data json.RawMessage) 
 	sub.klineH(event)
 }
 
-// handleOrderBookMessage parses and dispatches an order book event.
+// handleOrderBookMessage 解析并分发订单簿事件。
 func (m *WSManager) handleOrderBookMessage(sub *subscription, data json.RawMessage) {
 	var raw struct {
 		Bids [][]string `json:"bids"`
@@ -490,7 +490,7 @@ func (m *WSManager) handleOrderBookMessage(sub *subscription, data json.RawMessa
 	sub.bookH(event)
 }
 
-// handleUserDataMessage parses and dispatches a user data event.
+// handleUserDataMessage 解析并分发用户数据事件。
 func (m *WSManager) handleUserDataMessage(sub *subscription, data json.RawMessage) {
 	var raw struct {
 		EventType string `json:"e"`
@@ -509,8 +509,7 @@ func (m *WSManager) handleUserDataMessage(sub *subscription, data json.RawMessag
 	sub.userH(event)
 }
 
-// handleDisconnect marks the connection as dead and attempts to reconnect
-// with exponential backoff.
+// handleDisconnect 将连接标记为已断开，并尝试使用指数退避策略进行重连。
 func (m *WSManager) handleDisconnect() {
 	m.mu.Lock()
 	if m.conn != nil {
@@ -529,7 +528,7 @@ func (m *WSManager) handleDisconnect() {
 		default:
 		}
 
-		// Exponential backoff: baseDelay * 2^attempt, capped at baseDelay.
+		// 指数退避：baseDelay * 2^attempt，上限为 baseDelay。
 		delay := time.Duration(float64(wsReconnectBaseDelay) * math.Pow(2, float64(attempt)))
 		if delay > 30*time.Second {
 			delay = 30 * time.Second
@@ -556,7 +555,7 @@ func (m *WSManager) handleDisconnect() {
 			continue
 		}
 
-		// Connection re-established — resubscribe all streams.
+		// 连接已重新建立 - 重新订阅所有流。
 		if err := m.resubscribeAll(); err != nil {
 			m.log.Warn("resubscribe failed after reconnect", zap.Error(err))
 			continue

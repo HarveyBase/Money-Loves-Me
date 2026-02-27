@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// User represents the users table.
+// User 表示 users 数据表。
 type User struct {
 	ID               int          `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Username         string       `gorm:"column:username;type:varchar(64);not null;uniqueIndex:uk_users_username" json:"username"`
@@ -15,7 +15,7 @@ type User struct {
 	CreatedAt        time.Time    `gorm:"column:created_at;autoCreateTime" json:"created_at"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (User) TableName() string {
 	return "users"
 }

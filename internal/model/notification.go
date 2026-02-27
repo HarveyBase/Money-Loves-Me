@@ -2,7 +2,7 @@ package model
 
 import "time"
 
-// Notification represents the notifications table.
+// Notification 表示 notifications 数据表。
 type Notification struct {
 	ID          int64     `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	EventType   string    `gorm:"column:event_type;type:varchar(30);not null;index:idx_notifications_event_type" json:"event_type"`
@@ -12,7 +12,7 @@ type Notification struct {
 	CreatedAt   time.Time `gorm:"column:created_at;autoCreateTime;index:idx_notifications_created_at" json:"created_at"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (Notification) TableName() string {
 	return "notifications"
 }

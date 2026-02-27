@@ -14,9 +14,8 @@ import (
 	"money-loves-me/internal/model"
 )
 
-// Feature: binance-trading-system, Property 28: CSV 导出往返
-// For any set of trade records, exporting to CSV and then parsing back
-// should yield equivalent data.
+// Feature: binance-trading-system, Property 28: CSV 导出往返一致性
+// 对于任意一组交易记录，导出为 CSV 后再解析回来应产生等价的数据。
 //
 // **Validates: Requirements 9.5**
 
@@ -46,7 +45,7 @@ func genTrade(rt *rapid.T, idx int) model.Trade {
 	}
 	reasonJSON, _ := json.Marshal(reason)
 
-	// Use a fixed base time and offset by index to ensure unique, deterministic times.
+	// 使用固定的基准时间并按索引偏移，以确保唯一且确定性的时间。
 	baseTime := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC)
 	executedAt := baseTime.Add(time.Duration(idx) * time.Minute)
 
@@ -70,23 +69,23 @@ func genTrade(rt *rapid.T, idx int) model.Trade {
 
 func TestProperty28_CSVExportRoundTrip(t *testing.T) {
 	rapid.Check(t, func(rt *rapid.T) {
-		// Generate a random number of trades (0 to 20).
+		// 生成随机数量的交易记录（0 到 20）。
 		count := rapid.IntRange(0, 20).Draw(rt, "tradeCount")
 		trades := make([]model.Trade, count)
 		for i := 0; i < count; i++ {
 			trades[i] = genTrade(rt, i)
 		}
 
-		// Export to CSV.
+		// 导出为 CSV。
 		var buf bytes.Buffer
 		err := WriteTradesCSV(trades, &buf)
 		require.NoError(rt, err, "WriteTradesCSV should not fail")
 
-		// Parse back from CSV.
+		// 从 CSV 解析回来。
 		parsed, err := ParseTradesCSV(&buf)
 		require.NoError(rt, err, "ParseTradesCSV should not fail")
 
-		// Verify equivalence.
+		// 验证等价性。
 		require.Equal(rt, len(trades), len(parsed),
 			"parsed trade count should match original")
 
@@ -115,7 +114,7 @@ func TestProperty28_CSVExportRoundTrip(t *testing.T) {
 			assert.True(rt, orig.ExecutedAt.Equal(got.ExecutedAt),
 				"ExecutedAt mismatch at index %d: %s vs %s", i, orig.ExecutedAt, got.ExecutedAt)
 
-			// Verify DecisionReason JSON equivalence.
+			// 验证 DecisionReason JSON 等价性。
 			var origReason, gotReason model.DecisionReasonJSON
 			require.NoError(rt, json.Unmarshal(orig.DecisionReason, &origReason))
 			require.NoError(rt, json.Unmarshal(got.DecisionReason, &gotReason))
@@ -125,8 +124,8 @@ func TestProperty28_CSVExportRoundTrip(t *testing.T) {
 }
 
 func TestProperty28_EmptyTradeSet(t *testing.T) {
-	// Edge case: exporting zero trades should produce only a header,
-	// and parsing back should yield an empty slice.
+	// 边界情况：导出零条交易记录应只产生表头，
+	// 解析回来应返回空切片。
 	var buf bytes.Buffer
 	err := WriteTradesCSV(nil, &buf)
 	require.NoError(t, err)

@@ -19,25 +19,25 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// --- Interfaces for dependency injection ---
+// --- 依赖注入接口 ---
 
-// BinanceOrderClient defines the subset of BinanceClient used by OrderManager.
+// BinanceOrderClient 定义了 OrderManager 使用的 BinanceClient 子集。
 type BinanceOrderClient interface {
 	CreateOrder(req binance.CreateOrderRequest) (*binance.OrderResponse, error)
 	CancelOrder(symbol string, orderID int64) (*binance.OrderResponse, error)
 }
 
-// RiskChecker defines the risk control interface used by OrderManager.
+// RiskChecker 定义了 OrderManager 使用的风控接口。
 type RiskChecker interface {
 	CheckOrder(symbol string, amount, totalAssetValue decimal.Decimal) error
 }
 
-// AccountValuer provides total asset value for risk checks.
+// AccountValuer 提供用于风控检查的总资产价值。
 type AccountValuer interface {
 	GetTotalAssetValue() (decimal.Decimal, error)
 }
 
-// OrderStoreInterface defines the persistence interface for orders.
+// OrderStoreInterface 定义了订单的持久化接口。
 type OrderStoreInterface interface {
 	Create(order *model.Order) error
 	GetByID(id int64) (*model.Order, error)
@@ -45,14 +45,14 @@ type OrderStoreInterface interface {
 	GetByFilter(filter store.OrderFilter) ([]model.Order, error)
 }
 
-// TradeStoreInterface defines the persistence interface for trades.
+// TradeStoreInterface 定义了交易记录的持久化接口。
 type TradeStoreInterface interface {
 	Create(trade *model.Trade) error
 	GetByOrderID(orderID int64) ([]model.Trade, error)
 	GetByFilter(filter store.TradeFilter) ([]model.Trade, error)
 }
 
-// --- Order status constants ---
+// --- 订单状态常量 ---
 
 const (
 	OrderStatusSubmitted     = "SUBMITTED"
@@ -64,7 +64,7 @@ const (
 	OrderStatusExpired       = "EXPIRED"
 )
 
-// --- Order type constants ---
+// --- 订单类型常量 ---
 
 const (
 	OrderTypeLimit         = "LIMIT"
@@ -73,18 +73,18 @@ const (
 	OrderTypeTakeProfit    = "TAKE_PROFIT_LIMIT"
 )
 
-// --- Signal reason for strategy decision tracking ---
+// --- 策略决策跟踪的信号原因 ---
 
-// SignalReason captures the strategy decision context for an order.
+// SignalReason 记录订单的策略决策上下文。
 type SignalReason struct {
 	Indicators  map[string]float64 `json:"indicators"`
 	TriggerRule string             `json:"trigger_rule"`
 	MarketState string             `json:"market_state"`
 }
 
-// --- CreateOrderRequest for the OrderManager ---
+// --- OrderManager 的创建订单请求 ---
 
-// CreateOrderRequest holds the parameters for submitting an order.
+// CreateOrderRequest 保存提交订单所需的参数。
 type CreateOrderRequest struct {
 	Symbol       string
 	Side         string // BUY / SELL
@@ -96,14 +96,14 @@ type CreateOrderRequest struct {
 	Reason       *SignalReason
 }
 
-// OrderFilter defines filtering criteria for order history queries.
+// OrderFilter 定义订单历史查询的过滤条件。
 type OrderFilter struct {
 	Symbol string
 	Start  time.Time
 	End    time.Time
 }
 
-// OrderManager handles order submission, cancellation, tracking, and persistence.
+// OrderManager 处理订单提交、取消、跟踪和持久化。
 type OrderManager struct {
 	client    BinanceOrderClient
 	validator *OrderValidator
@@ -115,11 +115,11 @@ type OrderManager struct {
 	log       *logger.Logger
 
 	mu            sync.RWMutex
-	activeOrders  map[int64]*model.Order // binanceOrderID -> order
+	activeOrders  map[int64]*model.Order // binanceOrderID -> 订单
 	cancelRefresh context.CancelFunc
 }
 
-// NewOrderManager creates a new OrderManager with all dependencies.
+// NewOrderManager 使用所有依赖项创建一个新的 OrderManager。
 func NewOrderManager(
 	client BinanceOrderClient,
 	validator *OrderValidator,
@@ -143,15 +143,14 @@ func NewOrderManager(
 	}
 }
 
-// Start begins the background goroutine that refreshes active order statuses
-// every 2 seconds via WebSocket/polling.
+// Start 启动后台协程，每 2 秒通过 WebSocket/轮询刷新活跃订单状态。
 func (m *OrderManager) Start(ctx context.Context) {
 	ctx, m.cancelRefresh = context.WithCancel(ctx)
 	go m.refreshLoop(ctx)
 	m.logInfo("order manager started")
 }
 
-// Stop terminates the background order status refresh loop.
+// Stop 终止后台订单状态刷新循环。
 func (m *OrderManager) Stop() {
 	if m.cancelRefresh != nil {
 		m.cancelRefresh()
@@ -159,10 +158,10 @@ func (m *OrderManager) Stop() {
 	m.logInfo("order manager stopped")
 }
 
-// SubmitOrder validates, risk-checks, submits an order to Binance, persists it,
-// and records any fills as trades. On failure, it notifies the user.
+// SubmitOrder 验证、风控检查、向 Binance 提交订单、持久化订单，
+// 并将所有成交记录为交易。失败时通知用户。
 func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) (*model.Order, error) {
-	// 1. Validate order parameters against exchange rules.
+	// 1. 根据交易所规则验证订单参数。
 	binReq := binance.CreateOrderRequest{
 		Symbol:    req.Symbol,
 		Side:      req.Side,
@@ -172,7 +171,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 		StopPrice: req.StopPrice,
 	}
 
-	// Set TimeInForce for limit-type orders.
+	// 为限价类型订单设置 TimeInForce。
 	switch req.Type {
 	case OrderTypeLimit, OrderTypeStopLossLimit, OrderTypeTakeProfit:
 		binReq.TimeInForce = "GTC"
@@ -185,10 +184,10 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 		}
 	}
 
-	// 2. Risk control check.
+	// 2. 风控检查。
 	orderAmount := req.Quantity.Mul(req.Price)
 	if req.Type == OrderTypeMarket {
-		// For market orders, use quantity as a rough estimate (price may be zero).
+		// 对于市价单，使用数量作为粗略估算（价格可能为零）。
 		orderAmount = req.Quantity.Mul(req.Price)
 	}
 
@@ -208,7 +207,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 		}
 	}
 
-	// 3. Submit order to Binance.
+	// 3. 向 Binance 提交订单。
 	resp, err := m.client.CreateOrder(binReq)
 	if err != nil {
 		m.notifyFailure(req.Symbol, "order submission failed", err)
@@ -216,7 +215,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 			fmt.Sprintf("failed to submit order for %s", req.Symbol), "order", err)
 	}
 
-	// 4. Build and persist the order record.
+	// 4. 构建并持久化订单记录。
 	binanceOrderID := resp.OrderID
 	order := &model.Order{
 		Symbol:         resp.Symbol,
@@ -232,7 +231,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 		UpdatedAt:      time.Now(),
 	}
 
-	// Accumulate fees from fills.
+	// 累计成交手续费。
 	totalFee := decimal.Zero
 	feeAsset := ""
 	for _, fill := range resp.Fills {
@@ -251,7 +250,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 			"failed to persist order", "order", err)
 	}
 
-	// 5. Record fills as trade records with strategy decision reason.
+	// 5. 将成交记录为交易记录，包含策略决策原因。
 	reasonJSON, _ := json.Marshal(reason)
 	for _, fill := range resp.Fills {
 		fillPrice, _ := decimal.NewFromString(fill.Price)
@@ -279,7 +278,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 		}
 	}
 
-	// 6. Track active order for status updates.
+	// 6. 跟踪活跃订单以进行状态更新。
 	if isActiveStatus(order.Status) {
 		m.mu.Lock()
 		m.activeOrders[binanceOrderID] = order
@@ -296,7 +295,7 @@ func (m *OrderManager) SubmitOrder(req CreateOrderRequest, reason SignalReason) 
 	return order, nil
 }
 
-// CancelOrder sends a cancel request to Binance and updates the local order status.
+// CancelOrder 向 Binance 发送取消请求并更新本地订单状态。
 func (m *OrderManager) CancelOrder(symbol string, orderID int64) error {
 	resp, err := m.client.CancelOrder(symbol, orderID)
 	if err != nil {
@@ -304,7 +303,7 @@ func (m *OrderManager) CancelOrder(symbol string, orderID int64) error {
 			fmt.Sprintf("failed to cancel order %d", orderID), "order", err)
 	}
 
-	// Update local order record.
+	// 更新本地订单记录。
 	m.mu.Lock()
 	if o, ok := m.activeOrders[orderID]; ok {
 		o.Status = OrderStatusCancelled
@@ -319,7 +318,7 @@ func (m *OrderManager) CancelOrder(symbol string, orderID int64) error {
 		m.mu.Unlock()
 	}
 
-	// Also try to find and update by binance_order_id in the database directly.
+	// 同时尝试通过 binance_order_id 直接在数据库中查找并更新。
 	orders, err := m.orders.GetByFilter(store.OrderFilter{Symbol: symbol})
 	if err == nil {
 		for i := range orders {
@@ -340,10 +339,10 @@ func (m *OrderManager) CancelOrder(symbol string, orderID int64) error {
 	return nil
 }
 
-// GetActiveOrders returns all orders with status NEW or PARTIALLY_FILLED,
-// optionally filtered by symbol.
+// GetActiveOrders 返回所有状态为 NEW 或 PARTIALLY_FILLED 的订单，
+// 可选按交易对过滤。
 func (m *OrderManager) GetActiveOrders(symbol string) ([]model.Order, error) {
-	// Query NEW orders.
+	// 查询 NEW 状态的订单。
 	newOrders, err := m.orders.GetByFilter(store.OrderFilter{
 		Symbol: symbol,
 		Status: OrderStatusNew,
@@ -353,7 +352,7 @@ func (m *OrderManager) GetActiveOrders(symbol string) ([]model.Order, error) {
 			"failed to query active orders (NEW)", "order", err)
 	}
 
-	// Query PARTIALLY_FILLED orders.
+	// 查询 PARTIALLY_FILLED 状态的订单。
 	partialOrders, err := m.orders.GetByFilter(store.OrderFilter{
 		Symbol: symbol,
 		Status: OrderStatusPartialFilled,
@@ -369,7 +368,7 @@ func (m *OrderManager) GetActiveOrders(symbol string) ([]model.Order, error) {
 	return result, nil
 }
 
-// GetOrderHistory returns orders filtered by symbol and time range.
+// GetOrderHistory 返回按交易对和时间范围过滤的订单。
 func (m *OrderManager) GetOrderHistory(filter OrderFilter) ([]model.Order, error) {
 	orders, err := m.orders.GetByFilter(store.OrderFilter{
 		Symbol: filter.Symbol,
@@ -383,12 +382,12 @@ func (m *OrderManager) GetOrderHistory(filter OrderFilter) ([]model.Order, error
 	return orders, nil
 }
 
-// ExportTradesCSV exports trades matching the given time range to the writer in CSV format.
+// ExportTradesCSV 将匹配给定时间范围的交易记录以 CSV 格式导出到 writer。
 func (m *OrderManager) ExportTradesCSV(start, end time.Time, writer io.Writer) error {
 	return ExportCSV(m.trades, start, end, writer)
 }
 
-// refreshLoop polls active order statuses every 2 seconds.
+// refreshLoop 每 2 秒轮询活跃订单状态。
 func (m *OrderManager) refreshLoop(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
@@ -403,8 +402,8 @@ func (m *OrderManager) refreshLoop(ctx context.Context) {
 	}
 }
 
-// refreshActiveOrders re-queries active orders from the DB and updates
-// their status from the in-memory tracking map.
+// refreshActiveOrders 从数据库重新查询活跃订单，
+// 并根据内存跟踪映射更新其状态。
 func (m *OrderManager) refreshActiveOrders() {
 	m.mu.RLock()
 	activeIDs := make([]int64, 0, len(m.activeOrders))
@@ -417,9 +416,9 @@ func (m *OrderManager) refreshActiveOrders() {
 		return
 	}
 
-	// For each active order, we could query Binance for the latest status.
-	// In a production system this would use the user data WebSocket stream.
-	// Here we re-check the local DB state and remove completed orders.
+	// 对于每个活跃订单，可以向 Binance 查询最新状态。
+	// 在生产系统中，这将使用用户数据 WebSocket 流。
+	// 这里我们重新检查本地数据库状态并移除已完成的订单。
 	for _, binID := range activeIDs {
 		m.mu.RLock()
 		o, ok := m.activeOrders[binID]
@@ -428,7 +427,7 @@ func (m *OrderManager) refreshActiveOrders() {
 			continue
 		}
 
-		// Re-fetch from DB to check if status was updated externally.
+		// 从数据库重新获取以检查状态是否被外部更新。
 		dbOrder, err := m.orders.GetByID(o.ID)
 		if err != nil {
 			m.logWarn("failed to refresh order status", zap.Int64("orderID", o.ID), zap.Error(err))
@@ -447,9 +446,9 @@ func (m *OrderManager) refreshActiveOrders() {
 	}
 }
 
-// --- Helper functions ---
+// --- 辅助函数 ---
 
-// mapBinanceStatus maps Binance order status strings to local status constants.
+// mapBinanceStatus 将 Binance 订单状态字符串映射为本地状态常量。
 func mapBinanceStatus(status string) string {
 	switch status {
 	case "NEW":
@@ -469,12 +468,12 @@ func mapBinanceStatus(status string) string {
 	}
 }
 
-// isActiveStatus returns true if the order status indicates it's still active.
+// isActiveStatus 如果订单状态表示仍然活跃则返回 true。
 func isActiveStatus(status string) bool {
 	return status == OrderStatusNew || status == OrderStatusPartialFilled || status == OrderStatusSubmitted
 }
 
-// notifyFailure sends a notification about an order failure.
+// notifyFailure 发送关于订单失败的通知。
 func (m *OrderManager) notifyFailure(symbol, reason string, err error) {
 	m.logError("order failure",
 		zap.String("symbol", symbol),
@@ -490,21 +489,21 @@ func (m *OrderManager) notifyFailure(symbol, reason string, err error) {
 	}
 }
 
-// logInfo safely logs at INFO level.
+// logInfo 安全地以 INFO 级别记录日志。
 func (m *OrderManager) logInfo(msg string, fields ...zap.Field) {
 	if m.log != nil {
 		m.log.Info(msg, fields...)
 	}
 }
 
-// logWarn safely logs at WARN level.
+// logWarn 安全地以 WARN 级别记录日志。
 func (m *OrderManager) logWarn(msg string, fields ...zap.Field) {
 	if m.log != nil {
 		m.log.Warn(msg, fields...)
 	}
 }
 
-// logError safely logs at ERROR level.
+// logError 安全地以 ERROR 级别记录日志。
 func (m *OrderManager) logError(msg string, fields ...zap.Field) {
 	if m.log != nil {
 		m.log.Error(msg, fields...)

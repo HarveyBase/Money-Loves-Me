@@ -8,24 +8,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// NotificationStore handles CRUD operations for notifications.
+// NotificationStore 处理通知的 CRUD 操作。
 type NotificationStore struct {
 	*Store
 }
 
-// NewNotificationStore creates a new NotificationStore.
+// NewNotificationStore 创建一个新的 NotificationStore。
 func NewNotificationStore(db *gorm.DB) *NotificationStore {
 	return &NotificationStore{Store: NewStore(db)}
 }
 
-// Create inserts a new notification record.
+// Create 插入一条新的通知记录。
 func (s *NotificationStore) Create(notification *model.Notification) error {
 	return s.withRetry(func() error {
 		return s.db.Create(notification).Error
 	})
 }
 
-// NotificationFilter defines filtering criteria for notification queries.
+// NotificationFilter 定义通知查询的过滤条件。
 type NotificationFilter struct {
 	EventType string
 	IsRead    *bool
@@ -33,8 +33,8 @@ type NotificationFilter struct {
 	End       time.Time
 }
 
-// GetByFilter retrieves notifications matching the given filter criteria,
-// ordered by creation time descending.
+// GetByFilter 获取符合给定过滤条件的通知，
+// 按创建时间降序排列。
 func (s *NotificationStore) GetByFilter(filter NotificationFilter) ([]model.Notification, error) {
 	var notifications []model.Notification
 	err := s.withRetry(func() error {
@@ -54,7 +54,7 @@ func (s *NotificationStore) GetByFilter(filter NotificationFilter) ([]model.Noti
 	return notifications, nil
 }
 
-// MarkAsRead sets is_read = true for the notification with the given ID.
+// MarkAsRead 将指定 ID 的通知标记为已读（is_read = true）。
 func (s *NotificationStore) MarkAsRead(id int64) error {
 	return s.withRetry(func() error {
 		return s.db.Model(&model.Notification{}).Where("id = ?", id).Update("is_read", true).Error

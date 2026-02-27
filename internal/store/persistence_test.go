@@ -14,7 +14,7 @@ import (
 	"pgregory.net/rapid"
 )
 
-// setupTestDB creates an in-memory SQLite database with all tables migrated.
+// setupTestDB 创建一个内存中的 SQLite 数据库并迁移所有表。
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{
@@ -29,7 +29,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-// genDecimal generates a random decimal with up to 8 decimal places in a reasonable range.
+// genDecimal 生成一个合理范围内最多 8 位小数的随机 decimal。
 func genDecimal(t *rapid.T, label string) decimal.Decimal {
 	intPart := rapid.Int64Range(0, 999999).Draw(t, label+"_int")
 	fracPart := rapid.Int64Range(0, 99999999).Draw(t, label+"_frac")
@@ -37,37 +37,37 @@ func genDecimal(t *rapid.T, label string) decimal.Decimal {
 	return s
 }
 
-// genSide generates a random order side.
+// genSide 生成一个随机的订单方向。
 func genSide(t *rapid.T) string {
 	return rapid.SampledFrom([]string{"BUY", "SELL"}).Draw(t, "side")
 }
 
-// genOrderType generates a random order type.
+// genOrderType 生成一个随机的订单类型。
 func genOrderType(t *rapid.T) string {
 	return rapid.SampledFrom([]string{"LIMIT", "MARKET", "STOP_LOSS_LIMIT", "TAKE_PROFIT_LIMIT"}).Draw(t, "order_type")
 }
 
-// genOrderStatus generates a random order status.
+// genOrderStatus 生成一个随机的订单状态。
 func genOrderStatus(t *rapid.T) string {
 	return rapid.SampledFrom([]string{"SUBMITTED", "PARTIAL", "FILLED", "CANCELLED"}).Draw(t, "status")
 }
 
-// genSymbol generates a random trading pair symbol.
+// genSymbol 生成一个随机的交易对符号。
 func genSymbol(t *rapid.T) string {
 	return rapid.SampledFrom([]string{"BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "ADAUSDT"}).Draw(t, "symbol")
 }
 
-// genStrategyName generates a random strategy name.
+// genStrategyName 生成一个随机的策略名称。
 func genStrategyName(t *rapid.T) string {
 	return rapid.SampledFrom([]string{"ma_cross", "rsi", "bollinger", "grid", "dca"}).Draw(t, "strategy_name")
 }
 
-// genFeeAsset generates a random fee asset.
+// genFeeAsset 生成一个随机的手续费资产。
 func genFeeAsset(t *rapid.T) string {
 	return rapid.SampledFrom([]string{"BNB", "USDT", "BTC", "ETH"}).Draw(t, "fee_asset")
 }
 
-// genDecisionReason generates a random JSON decision reason.
+// genDecisionReason 生成一个随机的 JSON 决策原因。
 func genDecisionReason(t *rapid.T) json.RawMessage {
 	reason := model.DecisionReasonJSON{
 		Indicators: map[string]float64{
@@ -90,7 +90,7 @@ func genDecisionReason(t *rapid.T) json.RawMessage {
 	return data
 }
 
-// genJSONParams generates random JSON params for backtest/optimization.
+// genJSONParams 为回测/优化生成随机的 JSON 参数。
 func genJSONParams(t *rapid.T, label string) json.RawMessage {
 	params := map[string]interface{}{
 		"period": rapid.IntRange(1, 100).Draw(t, label+"_period"),
@@ -100,7 +100,7 @@ func genJSONParams(t *rapid.T, label string) json.RawMessage {
 	return data
 }
 
-// genJSONMetrics generates random JSON metrics for optimization records.
+// genJSONMetrics 为优化记录生成随机的 JSON 指标。
 func genJSONMetrics(t *rapid.T, label string) json.RawMessage {
 	metrics := map[string]interface{}{
 		"total_return": rapid.Float64Range(-50, 200).Draw(t, label+"_return"),
@@ -110,7 +110,7 @@ func genJSONMetrics(t *rapid.T, label string) json.RawMessage {
 	return data
 }
 
-// assertDecimalEqual checks that two decimals are equal using shopspring's Equal method.
+// assertDecimalEqual 使用 shopspring 的 Equal 方法检查两个 decimal 是否相等。
 func assertDecimalEqual(t *testing.T, expected, actual decimal.Decimal, field string) {
 	t.Helper()
 	if !expected.Equal(actual) {
@@ -118,7 +118,7 @@ func assertDecimalEqual(t *testing.T, expected, actual decimal.Decimal, field st
 	}
 }
 
-// assertJSONEqual checks that two JSON raw messages are semantically equal.
+// assertJSONEqual 检查两个 JSON 原始消息在语义上是否相等。
 func assertJSONEqual(t *testing.T, expected, actual json.RawMessage, field string) {
 	t.Helper()
 	if expected == nil && actual == nil {
@@ -143,8 +143,8 @@ func assertJSONEqual(t *testing.T, expected, actual json.RawMessage, field strin
 // Feature: binance-trading-system, Property 5: 数据持久化往返
 // Validates: Requirements 9.1, 3.6, 10.6
 //
-// Property 5: For any trade record, order record, backtest result, or optimization record,
-// writing to the database and reading back should yield an equivalent record.
+// Property 5: 对于任何交易记录、订单记录、回测结果或优化记录，
+// 写入数据库后再读取回来应该得到等价的记录。
 
 func TestProperty5_OrderPersistenceRoundTrip(t *testing.T) {
 	db := setupTestDB(t)
@@ -164,7 +164,7 @@ func TestProperty5_OrderPersistenceRoundTrip(t *testing.T) {
 			StrategyName: genStrategyName(rt),
 		}
 
-		// Write
+		// 写入
 		if err := orderStore.Create(order); err != nil {
 			t.Fatalf("failed to create order: %v", err)
 		}
@@ -172,13 +172,13 @@ func TestProperty5_OrderPersistenceRoundTrip(t *testing.T) {
 			t.Fatal("order ID should be set after creation")
 		}
 
-		// Read back
+		// 读取回来
 		got, err := orderStore.GetByID(order.ID)
 		if err != nil {
 			t.Fatalf("failed to read order: %v", err)
 		}
 
-		// Compare all fields
+		// 比较所有字段
 		if got.Symbol != order.Symbol {
 			t.Errorf("Symbol mismatch: expected %s, got %s", order.Symbol, got.Symbol)
 		}
@@ -210,7 +210,7 @@ func TestProperty5_TradePersistenceRoundTrip(t *testing.T) {
 	tradeStore := NewTradeStore(db)
 
 	rapid.Check(t, func(rt *rapid.T) {
-		// Create a parent order first (FK constraint)
+		// 先创建一个父订单（外键约束）
 		order := &model.Order{
 			Symbol:       genSymbol(rt),
 			Side:         genSide(rt),
@@ -242,7 +242,7 @@ func TestProperty5_TradePersistenceRoundTrip(t *testing.T) {
 			ExecutedAt:     executedAt,
 		}
 
-		// Write
+		// 写入
 		if err := tradeStore.Create(trade); err != nil {
 			t.Fatalf("failed to create trade: %v", err)
 		}
@@ -250,7 +250,7 @@ func TestProperty5_TradePersistenceRoundTrip(t *testing.T) {
 			t.Fatal("trade ID should be set after creation")
 		}
 
-		// Read back
+		// 读取回来
 		trades, err := tradeStore.GetByOrderID(order.ID)
 		if err != nil {
 			t.Fatalf("failed to read trades: %v", err)
@@ -261,7 +261,7 @@ func TestProperty5_TradePersistenceRoundTrip(t *testing.T) {
 
 		got := trades[0]
 
-		// Compare all fields
+		// 比较所有字段
 		if got.OrderID != trade.OrderID {
 			t.Errorf("OrderID mismatch: expected %d, got %d", trade.OrderID, got.OrderID)
 		}
@@ -289,6 +289,7 @@ func TestProperty5_TradePersistenceRoundTrip(t *testing.T) {
 		}
 	})
 }
+
 func TestProperty5_BacktestResultPersistenceRoundTrip(t *testing.T) {
 	db := setupTestDB(t)
 	backtestStore := NewBacktestStore(db)
@@ -316,7 +317,7 @@ func TestProperty5_BacktestResultPersistenceRoundTrip(t *testing.T) {
 			Slippage:       genDecimal(rt, "slippage"),
 		}
 
-		// Write
+		// 写入
 		if err := backtestStore.Create(result); err != nil {
 			t.Fatalf("failed to create backtest result: %v", err)
 		}
@@ -324,13 +325,13 @@ func TestProperty5_BacktestResultPersistenceRoundTrip(t *testing.T) {
 			t.Fatal("backtest result ID should be set after creation")
 		}
 
-		// Read back
+		// 读取回来
 		got, err := backtestStore.GetByID(result.ID)
 		if err != nil {
 			t.Fatalf("failed to read backtest result: %v", err)
 		}
 
-		// Compare all fields
+		// 比较所有字段
 		if got.StrategyName != result.StrategyName {
 			t.Errorf("StrategyName mismatch: expected %s, got %s", result.StrategyName, got.StrategyName)
 		}
@@ -381,7 +382,7 @@ func TestProperty5_OptimizationRecordPersistenceRoundTrip(t *testing.T) {
 			Applied:       rapid.Bool().Draw(rt, "applied"),
 		}
 
-		// Write
+		// 写入
 		if err := optStore.Create(record); err != nil {
 			t.Fatalf("failed to create optimization record: %v", err)
 		}
@@ -389,13 +390,13 @@ func TestProperty5_OptimizationRecordPersistenceRoundTrip(t *testing.T) {
 			t.Fatal("optimization record ID should be set after creation")
 		}
 
-		// Read back
+		// 读取回来
 		records, err := optStore.GetByStrategy(record.StrategyName)
 		if err != nil {
 			t.Fatalf("failed to read optimization records: %v", err)
 		}
 
-		// Find our record by ID
+		// 通过 ID 查找我们的记录
 		var got *model.OptimizationRecord
 		for i := range records {
 			if records[i].ID == record.ID {
@@ -407,7 +408,7 @@ func TestProperty5_OptimizationRecordPersistenceRoundTrip(t *testing.T) {
 			t.Fatal("optimization record not found after creation")
 		}
 
-		// Compare all fields
+		// 比较所有字段
 		if got.StrategyName != record.StrategyName {
 			t.Errorf("StrategyName mismatch: expected %s, got %s", record.StrategyName, got.StrategyName)
 		}

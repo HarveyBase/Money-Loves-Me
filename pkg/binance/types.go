@@ -6,7 +6,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Kline represents a single candlestick (OHLCV) data point.
+// Kline 表示单个蜡烛图（OHLCV）数据点。
 type Kline struct {
 	OpenTime  time.Time
 	Open      decimal.Decimal
@@ -17,18 +17,18 @@ type Kline struct {
 	CloseTime time.Time
 }
 
-// CreateOrderRequest holds the parameters for creating a new order.
+// CreateOrderRequest 包含创建新订单所需的参数。
 type CreateOrderRequest struct {
 	Symbol      string
 	Side        string // BUY / SELL
 	Type        string // LIMIT / MARKET / STOP_LOSS_LIMIT / TAKE_PROFIT_LIMIT
 	Quantity    decimal.Decimal
 	Price       decimal.Decimal
-	StopPrice   decimal.Decimal // trigger price for stop-loss / take-profit
+	StopPrice   decimal.Decimal // 止损/止盈的触发价格
 	TimeInForce string          // GTC, IOC, FOK
 }
 
-// OrderResponse is the response returned by Binance after order operations.
+// OrderResponse 是 Binance 在订单操作后返回的响应。
 type OrderResponse struct {
 	Symbol        string      `json:"symbol"`
 	OrderID       int64       `json:"orderId"`
@@ -43,7 +43,7 @@ type OrderResponse struct {
 	Fills         []OrderFill `json:"fills"`
 }
 
-// OrderFill represents a single fill within an order response.
+// OrderFill 表示订单响应中的单笔成交记录。
 type OrderFill struct {
 	Price           string `json:"price"`
 	Qty             string `json:"qty"`
@@ -51,7 +51,7 @@ type OrderFill struct {
 	CommissionAsset string `json:"commissionAsset"`
 }
 
-// AccountInfo holds the account balance and permission information.
+// AccountInfo 包含账户余额和权限信息。
 type AccountInfo struct {
 	MakerCommission int       `json:"makerCommission"`
 	TakerCommission int       `json:"takerCommission"`
@@ -62,21 +62,21 @@ type AccountInfo struct {
 	Balances        []Balance `json:"balances"`
 }
 
-// Balance represents a single asset balance.
+// Balance 表示单个资产的余额。
 type Balance struct {
 	Asset  string `json:"asset"`
 	Free   string `json:"free"`
 	Locked string `json:"locked"`
 }
 
-// ExchangeInfo contains trading rules and symbol information.
+// ExchangeInfo 包含交易规则和交易对信息。
 type ExchangeInfo struct {
 	Timezone   string       `json:"timezone"`
 	ServerTime int64        `json:"serverTime"`
 	Symbols    []SymbolInfo `json:"symbols"`
 }
 
-// SymbolInfo describes a single trading pair's rules.
+// SymbolInfo 描述单个交易对的规则。
 type SymbolInfo struct {
 	Symbol              string         `json:"symbol"`
 	Status              string         `json:"status"`
@@ -88,7 +88,7 @@ type SymbolInfo struct {
 	Filters             []SymbolFilter `json:"filters"`
 }
 
-// SymbolFilter represents a trading rule filter for a symbol.
+// SymbolFilter 表示交易对的交易规则过滤器。
 type SymbolFilter struct {
 	FilterType  string `json:"filterType"`
 	MinPrice    string `json:"minPrice,omitempty"`
@@ -100,25 +100,25 @@ type SymbolFilter struct {
 	MinNotional string `json:"minNotional,omitempty"`
 }
 
-// OrderBook represents the current order book for a symbol.
+// OrderBook 表示某个交易对的当前订单簿。
 type OrderBook struct {
 	Symbol     string
-	Bids       []PriceLevel // buy side, price descending
-	Asks       []PriceLevel // sell side, price ascending
+	Bids       []PriceLevel // 买方，价格降序
+	Asks       []PriceLevel // 卖方，价格升序
 	UpdateTime time.Time
 }
 
-// PriceLevel is a single price/quantity entry in the order book.
+// PriceLevel 是订单簿中的单个价格/数量条目。
 type PriceLevel struct {
 	Price    decimal.Decimal
 	Quantity decimal.Decimal
 }
 
-// binanceKlineRaw is the raw JSON array returned by the Binance klines endpoint.
-// Each element is: [openTime, open, high, low, close, volume, closeTime, ...]
+// binanceKlineRaw 是 Binance K 线接口返回的原始 JSON 数组。
+// 每个元素为：[openTime, open, high, low, close, volume, closeTime, ...]
 type binanceKlineRaw = []interface{}
 
-// binanceOrderBookRaw is the raw JSON response from the Binance order book endpoint.
+// binanceOrderBookRaw 是 Binance 订单簿接口返回的原始 JSON 响应。
 type binanceOrderBookRaw struct {
 	LastUpdateID int64      `json:"lastUpdateId"`
 	Bids         [][]string `json:"bids"`

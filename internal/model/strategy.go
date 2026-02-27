@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Strategy represents the strategies table.
+// Strategy 表示 strategies 数据表。
 type Strategy struct {
 	ID        int             `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	Name      string          `gorm:"column:name;type:varchar(50);not null;uniqueIndex:uk_strategies_name" json:"name"`
@@ -15,7 +15,7 @@ type Strategy struct {
 	UpdatedAt time.Time       `gorm:"column:updated_at;autoUpdateTime" json:"updated_at"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (Strategy) TableName() string {
 	return "strategies"
 }

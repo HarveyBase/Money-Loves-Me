@@ -15,15 +15,15 @@ const (
 	BollingerParamStdDevMult = "std_dev_multiplier"
 )
 
-// BollingerStrategy implements a Bollinger Bands breakout strategy.
-// A BUY signal is generated when the price touches or breaks below the lower band.
-// A SELL signal is generated when the price touches or breaks above the upper band.
+// BollingerStrategy 实现了布林带突破策略。
+// 当价格触及或跌破下轨时生成买入信号。
+// 当价格触及或突破上轨时生成卖出信号。
 type BollingerStrategy struct {
 	period     int
 	stdDevMult decimal.Decimal
 }
 
-// NewBollingerStrategy creates a new Bollinger Bands strategy with default parameters.
+// NewBollingerStrategy 使用默认参数创建新的布林带策略。
 func NewBollingerStrategy() *BollingerStrategy {
 	return &BollingerStrategy{
 		period:     20,
@@ -31,13 +31,13 @@ func NewBollingerStrategy() *BollingerStrategy {
 	}
 }
 
-// Name returns the strategy name.
+// Name 返回策略名称。
 func (s *BollingerStrategy) Name() string {
 	return BollingerName
 }
 
-// Calculate analyzes klines and returns a BUY/SELL signal based on Bollinger Bands.
-// Returns nil if there is insufficient data or price is within the bands.
+// Calculate 分析 K 线数据并根据布林带返回买入/卖出信号。
+// 如果数据不足或价格在布林带内则返回 nil。
 func (s *BollingerStrategy) Calculate(klines []binance.Kline) *Signal {
 	if len(klines) < s.period {
 		return nil
@@ -62,7 +62,7 @@ func (s *BollingerStrategy) Calculate(klines []binance.Kline) *Signal {
 		"BB_StdDev": stdDev.InexactFloat64(),
 	}
 
-	// Price at or below lower band → BUY
+	// 价格触及或低于下轨 → 买入
 	if price.LessThanOrEqual(lower) {
 		return &Signal{
 			Strategy:  s.Name(),
@@ -79,7 +79,7 @@ func (s *BollingerStrategy) Calculate(klines []binance.Kline) *Signal {
 		}
 	}
 
-	// Price at or above upper band → SELL
+	// 价格触及或高于上轨 → 卖出
 	if price.GreaterThanOrEqual(upper) {
 		return &Signal{
 			Strategy:  s.Name(),
@@ -99,7 +99,7 @@ func (s *BollingerStrategy) Calculate(klines []binance.Kline) *Signal {
 	return nil
 }
 
-// GetParams returns the current strategy parameters.
+// GetParams 返回当前策略参数。
 func (s *BollingerStrategy) GetParams() StrategyParams {
 	return StrategyParams{
 		BollingerParamPeriod:     decimal.NewFromInt(int64(s.period)),
@@ -107,7 +107,7 @@ func (s *BollingerStrategy) GetParams() StrategyParams {
 	}
 }
 
-// SetParams updates the strategy parameters.
+// SetParams 更新策略参数。
 func (s *BollingerStrategy) SetParams(params StrategyParams) error {
 	p, ok := params[BollingerParamPeriod]
 	if !ok {
@@ -131,12 +131,12 @@ func (s *BollingerStrategy) SetParams(params StrategyParams) error {
 	return nil
 }
 
-// EstimateFee estimates the trading fee for a given price, quantity, and fee rate.
+// EstimateFee 根据给定的价格、数量和费率估算交易手续费。
 func (s *BollingerStrategy) EstimateFee(price, quantity, feeRate decimal.Decimal) decimal.Decimal {
 	return price.Mul(quantity).Mul(feeRate)
 }
 
-// calcStdDev computes the population standard deviation of Close prices.
+// calcStdDev 计算收盘价的总体标准差。
 func (s *BollingerStrategy) calcStdDev(klines []binance.Kline, mean decimal.Decimal) decimal.Decimal {
 	if len(klines) == 0 {
 		return decimal.Zero
@@ -152,18 +152,18 @@ func (s *BollingerStrategy) calcStdDev(klines []binance.Kline, mean decimal.Deci
 	return decimalSqrt(variance)
 }
 
-// decimalSqrt computes the square root of a decimal using Newton's method.
+// decimalSqrt 使用牛顿法计算 decimal 的平方根。
 func decimalSqrt(d decimal.Decimal) decimal.Decimal {
 	if d.IsZero() || d.IsNegative() {
 		return decimal.Zero
 	}
 
-	// Newton's method: x_{n+1} = (x_n + d/x_n) / 2
+	// 牛顿法：x_{n+1} = (x_n + d/x_n) / 2
 	two := decimal.NewFromInt(2)
-	x := d // initial guess
+	x := d // 初始猜测值
 	for i := 0; i < 50; i++ {
 		next := x.Add(d.Div(x)).Div(two)
-		// Check convergence with high precision.
+		// 以高精度检查收敛性。
 		if next.Sub(x).Abs().LessThan(decimal.New(1, -16)) {
 			return next
 		}

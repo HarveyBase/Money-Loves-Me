@@ -14,14 +14,14 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// OptimizerConfig holds the optimizer configuration.
+// OptimizerConfig 保存优化器配置。
 type OptimizerConfig struct {
-	Interval       time.Duration // optimization cycle, default 24h
-	LookbackDays   int           // lookback period in days, default 30
-	MaxParamChange float64       // max parameter change ratio, default 0.3 (30%)
+	Interval       time.Duration // 优化周期，默认 24 小时
+	LookbackDays   int           // 回溯天数，默认 30
+	MaxParamChange float64       // 最大参数变化比率，默认 0.3（30%）
 }
 
-// DefaultOptimizerConfig returns the default optimizer configuration.
+// DefaultOptimizerConfig 返回默认的优化器配置。
 func DefaultOptimizerConfig() OptimizerConfig {
 	return OptimizerConfig{
 		Interval:       24 * time.Hour,
@@ -30,21 +30,21 @@ func DefaultOptimizerConfig() OptimizerConfig {
 	}
 }
 
-// RecordStore abstracts persistence of optimization records.
+// RecordStore 抽象优化记录的持久化存储。
 type RecordStore interface {
 	Create(record *model.OptimizationRecord) error
 	GetAll() ([]model.OptimizationRecord, error)
 	GetByStrategy(strategyName string) ([]model.OptimizationRecord, error)
 }
 
-// StrategyOptimizer optimizes strategy parameters using backtesting.
+// StrategyOptimizer 使用回测来优化策略参数。
 type StrategyOptimizer struct {
 	backtester *backtest.Backtester
 	store      RecordStore
 	config     OptimizerConfig
 }
 
-// NewStrategyOptimizer creates a new StrategyOptimizer.
+// NewStrategyOptimizer 创建新的 StrategyOptimizer。
 func NewStrategyOptimizer(bt *backtest.Backtester, store RecordStore, cfg OptimizerConfig) *StrategyOptimizer {
 	return &StrategyOptimizer{
 		backtester: bt,
@@ -53,18 +53,18 @@ func NewStrategyOptimizer(bt *backtest.Backtester, store RecordStore, cfg Optimi
 	}
 }
 
-// CandidateResult pairs a parameter set with its backtest result.
+// CandidateResult 将参数集与其回测结果配对。
 type CandidateResult struct {
 	Params strategy.StrategyParams
 	Result *backtest.BacktestResult
 }
 
-// GenerateCandidates generates candidate parameter sets within ±MaxParamChange of current params.
+// GenerateCandidates 在当前参数的 ±MaxParamChange 范围内生成候选参数集。
 func (o *StrategyOptimizer) GenerateCandidates(currentParams strategy.StrategyParams, numCandidates int) []strategy.StrategyParams {
 	candidates := make([]strategy.StrategyParams, 0, numCandidates)
 	maxChange := o.config.MaxParamChange
 
-	// Generate evenly spaced candidates within the allowed range
+	// 在允许范围内生成均匀分布的候选参数
 	for i := 0; i < numCandidates; i++ {
 		candidate := make(strategy.StrategyParams)
 		ratio := -maxChange + (2*maxChange)*float64(i)/float64(numCandidates)
@@ -73,7 +73,7 @@ func (o *StrategyOptimizer) GenerateCandidates(currentParams strategy.StrategyPa
 			change := value.Mul(decimal.NewFromFloat(ratio))
 			newVal := value.Add(change)
 			if newVal.LessThanOrEqual(decimal.Zero) {
-				newVal = value.Mul(decimal.NewFromFloat(0.1)) // floor at 10% of original
+				newVal = value.Mul(decimal.NewFromFloat(0.1)) // 下限为原始值的 10%
 			}
 			candidate[name] = newVal
 		}
@@ -82,7 +82,7 @@ func (o *StrategyOptimizer) GenerateCandidates(currentParams strategy.StrategyPa
 	return candidates
 }
 
-// ClampParams ensures each parameter change stays within MaxParamChange of the original.
+// ClampParams 确保每个参数的变化幅度不超过原始值的 MaxParamChange。
 func (o *StrategyOptimizer) ClampParams(original, proposed strategy.StrategyParams) strategy.StrategyParams {
 	clamped := make(strategy.StrategyParams)
 	maxChange := o.config.MaxParamChange
@@ -99,7 +99,7 @@ func (o *StrategyOptimizer) ClampParams(original, proposed strategy.StrategyPara
 		}
 		changeRatio := newVal.Sub(origVal).Div(origVal).Abs().InexactFloat64()
 		if changeRatio > maxChange {
-			// Clamp to max allowed change
+			// 限制在最大允许变化范围内
 			if newVal.GreaterThan(origVal) {
 				clamped[name] = origVal.Mul(decimal.NewFromFloat(1 + maxChange))
 			} else {
@@ -112,8 +112,8 @@ func (o *StrategyOptimizer) ClampParams(original, proposed strategy.StrategyPara
 	return clamped
 }
 
-// SelectBest picks the candidate with the highest net profit rate.
-// Returns nil if no candidate has positive net profit.
+// SelectBest 选择净利润最高的候选参数。
+// 如果没有候选参数具有正净利润则返回 nil。
 func SelectBest(candidates []CandidateResult) *CandidateResult {
 	var best *CandidateResult
 	for i := range candidates {
@@ -126,36 +126,36 @@ func SelectBest(candidates []CandidateResult) *CandidateResult {
 		}
 	}
 	if best != nil && best.Result.NetProfit.IsNegative() {
-		return nil // no positive candidate
+		return nil // 没有正收益的候选参数
 	}
 	return best
 }
 
-// ShouldApply determines if the optimized params should replace current params.
-// Returns true if the best candidate has positive net profit AND outperforms current.
+// ShouldApply 判断优化后的参数是否应替换当前参数。
+// 当最佳候选参数具有正净利润且优于当前参数时返回 true。
 func ShouldApply(currentResult, bestResult *backtest.BacktestResult) bool {
 	if bestResult == nil || currentResult == nil {
 		return false
 	}
-	// Best must have positive net profit
+	// 最佳候选必须具有正净利润
 	if bestResult.NetProfit.IsNegative() || bestResult.NetProfit.IsZero() {
 		return false
 	}
-	// Best must outperform current
+	// 最佳候选必须优于当前参数
 	return bestResult.NetProfit.GreaterThan(currentResult.NetProfit)
 }
 
-// RunOptimization runs a full optimization cycle for a strategy.
+// RunOptimization 为策略运行完整的优化周期。
 func (o *StrategyOptimizer) RunOptimization(ctx context.Context, strat strategy.Strategy, btCfg backtest.BacktestConfig) (*CandidateResult, bool, error) {
 	currentParams := strat.GetParams()
 
-	// Run backtest with current params
+	// 使用当前参数运行回测
 	currentResult, err := o.backtester.Run(btCfg)
 	if err != nil {
 		return nil, false, fmt.Errorf("backtest with current params failed: %w", err)
 	}
 
-	// Generate candidates
+	// 生成候选参数
 	candidates := o.GenerateCandidates(currentParams, 10)
 	var candidateResults []CandidateResult
 
@@ -171,7 +171,7 @@ func (o *StrategyOptimizer) RunOptimization(ctx context.Context, strat strategy.
 		candidateResults = append(candidateResults, CandidateResult{Params: clamped, Result: result})
 	}
 
-	// Restore original params
+	// 恢复原始参数
 	strat.SetParams(currentParams)
 
 	best := SelectBest(candidateResults)
@@ -182,7 +182,7 @@ func (o *StrategyOptimizer) RunOptimization(ctx context.Context, strat strategy.
 		applied = true
 	}
 
-	// Save optimization record
+	// 保存优化记录
 	if o.store != nil {
 		o.saveRecord(strat.Name(), currentParams, best, currentResult, applied)
 	}
@@ -224,7 +224,7 @@ func (o *StrategyOptimizer) saveRecord(stratName string, oldParams strategy.Stra
 	o.store.Create(record)
 }
 
-// GetHistory retrieves all optimization records.
+// GetHistory 获取所有优化记录。
 func (o *StrategyOptimizer) GetHistory() ([]model.OptimizationRecord, error) {
 	if o.store == nil {
 		return nil, nil
@@ -232,7 +232,7 @@ func (o *StrategyOptimizer) GetHistory() ([]model.OptimizationRecord, error) {
 	return o.store.GetAll()
 }
 
-// ParamChangeRatio calculates the change ratio for each parameter.
+// ParamChangeRatio 计算每个参数的变化比率。
 func ParamChangeRatio(oldParams, newParams strategy.StrategyParams) map[string]float64 {
 	ratios := make(map[string]float64)
 	for name, oldVal := range oldParams {

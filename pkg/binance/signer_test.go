@@ -15,31 +15,31 @@ import (
 
 func TestProperty2_HMACSHA256SignatureVerification(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate a random secret key (16–64 bytes)
+		// 生成一个随机密钥（16-64 字节）
 		keyLen := rapid.IntRange(16, 64).Draw(t, "keyLen")
 		key := make([]byte, keyLen)
 		for i := range key {
 			key[i] = rapid.Byte().Draw(t, fmt.Sprintf("key[%d]", i))
 		}
 
-		// Generate an arbitrary payload
+		// 生成一个任意载荷
 		payload := rapid.String().Draw(t, "payload")
 
 		signer := NewHMACSigner(key)
 
-		// --- Sub-property 1: Sign then Verify round-trip ---
+		// --- 子属性 1：签名后验证的往返测试 ---
 		sig := signer.Sign(payload)
 		if !signer.Verify(payload, sig) {
 			t.Fatalf("Verify failed for payload %q with its own signature", payload)
 		}
 
-		// --- Sub-property 2: Deterministic – same input → same signature ---
+		// --- 子属性 2：确定性 - 相同输入 → 相同签名 ---
 		sig2 := signer.Sign(payload)
 		if sig != sig2 {
 			t.Fatalf("Sign is not deterministic: got %q and %q for the same payload", sig, sig2)
 		}
 
-		// --- Sub-property 3: Standard HMAC-SHA256 verification ---
+		// --- 子属性 3：标准 HMAC-SHA256 验证 ---
 		mac := hmac.New(sha256.New, key)
 		mac.Write([]byte(payload))
 		expected := hex.EncodeToString(mac.Sum(nil))
@@ -47,7 +47,7 @@ func TestProperty2_HMACSHA256SignatureVerification(t *testing.T) {
 			t.Fatalf("signature %q does not match standard HMAC-SHA256 result %q", sig, expected)
 		}
 
-		// --- Sub-property 4: Different payload → different signature (high probability) ---
+		// --- 子属性 4：不同载荷 → 不同签名（高概率） ---
 		payload2 := rapid.String().Draw(t, "payload2")
 		if payload != payload2 {
 			sig3 := signer.Sign(payload2)
@@ -56,17 +56,17 @@ func TestProperty2_HMACSHA256SignatureVerification(t *testing.T) {
 			}
 		}
 
-		// --- Sub-property 5: Wrong key → Verify returns false ---
+		// --- 子属性 5：错误密钥 → Verify 返回 false ---
 		wrongKeyLen := rapid.IntRange(16, 64).Draw(t, "wrongKeyLen")
 		wrongKey := make([]byte, wrongKeyLen)
 		for i := range wrongKey {
 			wrongKey[i] = rapid.Byte().Draw(t, fmt.Sprintf("wrongKey[%d]", i))
 		}
-		// Ensure the wrong key is actually different
+		// 确保错误密钥确实不同
 		wrongSigner := NewHMACSigner(wrongKey)
 		wrongSig := wrongSigner.Sign(payload)
 		if wrongSig != sig {
-			// Keys produce different signatures, so cross-verify should fail
+			// 不同密钥产生不同签名，因此交叉验证应失败
 			if wrongSigner.Verify(payload, sig) {
 				t.Fatalf("Verify should fail with a different key")
 			}

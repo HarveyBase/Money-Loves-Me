@@ -5,6 +5,9 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"pgregory.net/rapid"
 
 	"money-loves-me/internal/config"
@@ -12,15 +15,11 @@ import (
 	"money-loves-me/internal/model"
 	"money-loves-me/internal/store"
 	"money-loves-me/pkg/binance"
-
-	"gorm.io/driver/sqlite"
-	"gorm.io/gorm"
-	gormlogger "gorm.io/gorm/logger"
 )
 
-// --- test doubles ---
+// --- 测试替身 ---
 
-// mockBinanceClient implements BinanceAccountClient for testing.
+// mockBinanceClient 实现 BinanceAccountClient 接口，用于测试。
 type mockBinanceClient struct {
 	info *binance.AccountInfo
 	err  error
@@ -30,7 +29,7 @@ func (m *mockBinanceClient) GetAccountInfo() (*binance.AccountInfo, error) {
 	return m.info, m.err
 }
 
-// mockMarketPricer implements MarketPricer for testing.
+// mockMarketPricer 实现 MarketPricer 接口，用于测试。
 type mockMarketPricer struct {
 	prices map[string]decimal.Decimal
 }
@@ -43,7 +42,7 @@ func (m *mockMarketPricer) GetCurrentPrice(symbol string) (decimal.Decimal, erro
 	return p, nil
 }
 
-// --- helpers ---
+// --- 辅助函数 ---
 
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
@@ -65,7 +64,7 @@ func newTestService(t *testing.T, client BinanceAccountClient, pricer MarketPric
 	tradeStore := store.NewTradeStore(db)
 	accountStore := store.NewAccountStore(db)
 
-	// Create service without background refresh for deterministic tests.
+	// 创建不带后台刷新的服务，以确保测试的确定性。
 	svc := &AccountService{
 		client:        client,
 		market:        pricer,
@@ -78,9 +77,9 @@ func newTestService(t *testing.T, client BinanceAccountClient, pricer MarketPric
 	return svc, tradeStore, accountStore
 }
 
-// noopLogger returns a logger that discards output (for tests).
+// noopLogger 返回一个丢弃输出的日志记录器（用于测试）。
 func noopLogger() *logger.Logger {
-	// Use a minimal config that writes to nowhere.
+	// 使用一个不输出到任何地方的最小配置。
 	cfg := config.LogConfig{Level: "DEBUG", MaxSizeMB: 100, MaxAgeDays: 30}
 	l, err := logger.NewLogger("account-test", cfg)
 	if err != nil {
@@ -89,12 +88,12 @@ func noopLogger() *logger.Logger {
 	return l
 }
 
-// --- GetBalances tests ---
+// --- GetBalances 测试 ---
 
 func TestGetBalances_ReturnsCachedBalances(t *testing.T) {
 	svc, _, _ := newTestService(t, &mockBinanceClient{}, &mockMarketPricer{})
 
-	// Populate cache manually.
+	// 手动填充缓存。
 	svc.mu.Lock()
 	svc.cache["BTC"] = BalanceInfo{Free: decimal.NewFromFloat(1.5), Locked: decimal.NewFromFloat(0.5)}
 	svc.cache["ETH"] = BalanceInfo{Free: decimal.NewFromFloat(10.0), Locked: decimal.Zero}
@@ -124,7 +123,7 @@ func TestGetBalances_EmptyCache_ReturnsError(t *testing.T) {
 	}
 }
 
-// --- GetTotalAssetValue tests ---
+// --- GetTotalAssetValue 测试 ---
 
 func TestGetTotalAssetValue_CalculatesCorrectly(t *testing.T) {
 	pricer := &mockMarketPricer{
@@ -141,7 +140,7 @@ func TestGetTotalAssetValue_CalculatesCorrectly(t *testing.T) {
 	svc.cache["USDT"] = BalanceInfo{Free: decimal.NewFromInt(5000), Locked: decimal.Zero}
 	svc.mu.Unlock()
 
-	// Expected: 2*50000 + 10*3000 + 5000 = 100000 + 30000 + 5000 = 135000
+	// 预期值: 2*50000 + 10*3000 + 5000 = 100000 + 30000 + 5000 = 135000
 	total, err := svc.GetTotalAssetValue()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -152,12 +151,12 @@ func TestGetTotalAssetValue_CalculatesCorrectly(t *testing.T) {
 	}
 }
 
-// --- GetPositionPnL tests ---
+// --- GetPositionPnL 测试 ---
 
 func TestGetPositionPnL_CalculatesWithFees(t *testing.T) {
 	svc, tradeStore, _ := newTestService(t, &mockBinanceClient{}, &mockMarketPricer{})
 
-	// Insert test trades.
+	// 插入测试交易。
 	now := time.Now()
 	trades := []model.Trade{
 		{
@@ -184,7 +183,7 @@ func TestGetPositionPnL_CalculatesWithFees(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// PnL = 55000 - 50000 - (50+55) = 5000 - 105 = 4895
+	// 盈亏 = 55000 - 50000 - (50+55) = 5000 - 105 = 4895
 	expectedPnL := decimal.NewFromInt(4895)
 	if !pnl.RealizedPnL.Equal(expectedPnL) {
 		t.Errorf("realized PnL = %s, want %s", pnl.RealizedPnL, expectedPnL)
@@ -207,7 +206,7 @@ func TestGetPositionPnL_EmptySymbol_ReturnsError(t *testing.T) {
 	}
 }
 
-// --- GetAssetHistory tests ---
+// --- GetAssetHistory 测试 ---
 
 func TestGetAssetHistory_ReturnsSnapshots(t *testing.T) {
 	svc, _, accountStore := newTestService(t, &mockBinanceClient{}, &mockMarketPricer{})
@@ -234,7 +233,7 @@ func TestGetAssetHistory_ReturnsSnapshots(t *testing.T) {
 	}
 }
 
-// --- GetFeeStats tests ---
+// --- GetFeeStats 测试 ---
 
 func TestGetFeeStats_CalculatesCumulativeFees(t *testing.T) {
 	svc, tradeStore, _ := newTestService(t, &mockBinanceClient{}, &mockMarketPricer{})
@@ -271,7 +270,7 @@ func TestGetFeeStats_CalculatesCumulativeFees(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	// Total = 50 + 30 + 0.001 = 80.001
+	// 总计 = 50 + 30 + 0.001 = 80.001
 	expectedTotal := decimal.NewFromFloat(80.001)
 	if !stats.TotalFees.Equal(expectedTotal) {
 		t.Errorf("total fees = %s, want %s", stats.TotalFees, expectedTotal)
@@ -279,14 +278,14 @@ func TestGetFeeStats_CalculatesCumulativeFees(t *testing.T) {
 	if stats.TradeCount != 3 {
 		t.Errorf("trade count = %d, want 3", stats.TradeCount)
 	}
-	// Fee by asset: USDT=80, BNB=0.001
+	// 按资产分组的手续费: USDT=80, BNB=0.001
 	if !stats.FeeByAsset["USDT"].Equal(decimal.NewFromInt(80)) {
 		t.Errorf("USDT fees = %s, want 80", stats.FeeByAsset["USDT"])
 	}
 	if !stats.FeeByAsset["BNB"].Equal(decimal.NewFromFloat(0.001)) {
 		t.Errorf("BNB fees = %s, want 0.001", stats.FeeByAsset["BNB"])
 	}
-	// Fee by symbol: BTCUSDT=50.001, ETHUSDT=30
+	// 按交易对分组的手续费: BTCUSDT=50.001, ETHUSDT=30
 	expectedBTC := decimal.NewFromFloat(50.001)
 	if !stats.FeeBySymbol["BTCUSDT"].Equal(expectedBTC) {
 		t.Errorf("BTCUSDT fees = %s, want %s", stats.FeeBySymbol["BTCUSDT"], expectedBTC)
@@ -296,7 +295,7 @@ func TestGetFeeStats_CalculatesCumulativeFees(t *testing.T) {
 	}
 }
 
-// --- refreshCache tests ---
+// --- refreshCache 测试 ---
 
 func TestRefreshCache_UpdatesFromBinanceAPI(t *testing.T) {
 	client := &mockBinanceClient{
@@ -304,7 +303,7 @@ func TestRefreshCache_UpdatesFromBinanceAPI(t *testing.T) {
 			Balances: []binance.Balance{
 				{Asset: "BTC", Free: "1.5", Locked: "0.5"},
 				{Asset: "ETH", Free: "10.0", Locked: "0.0"},
-				{Asset: "DOGE", Free: "0.0", Locked: "0.0"}, // zero balance, should be skipped
+				{Asset: "DOGE", Free: "0.0", Locked: "0.0"}, // 零余额，应被跳过
 			},
 		},
 	}
@@ -330,40 +329,40 @@ func TestRefreshCache_UpdatesFromBinanceAPI(t *testing.T) {
 // **Validates: Requirements 5.3**
 func TestProperty10_TotalAssetValueCalculation(t *testing.T) {
 	rapid.Check(t, func(rt *rapid.T) {
-		// Generate a random number of non-USDT assets (0-5).
+		// 生成随机数量的非 USDT 资产（0-5）。
 		numAssets := rapid.IntRange(0, 5).Draw(rt, "numAssets")
 
-		// Pre-defined asset names to avoid duplicates and ensure valid symbols.
+		// 预定义资产名称以避免重复并确保有效的交易对。
 		assetPool := []string{"BTC", "ETH", "BNB", "SOL", "ADA", "XRP", "DOT", "AVAX"}
 
-		// Pick unique assets from the pool.
+		// 从池中选取不重复的资产。
 		assets := assetPool[:numAssets]
 
-		// Generate balances and prices for each asset.
+		// 为每个资产生成余额和价格。
 		prices := make(map[string]decimal.Decimal)
 		cache := make(map[string]BalanceInfo)
 		expectedTotal := decimal.Zero
 
 		for _, asset := range assets {
-			// Generate free and locked balances as positive integers (avoid floating point issues).
+			// 生成可用和冻结余额为正整数（避免浮点精度问题）。
 			freeInt := rapid.Int64Range(0, 1000000).Draw(rt, asset+"_free")
 			lockedInt := rapid.Int64Range(0, 1000000).Draw(rt, asset+"_locked")
 			free := decimal.NewFromInt(freeInt)
 			locked := decimal.NewFromInt(lockedInt)
 
-			// Generate a positive price for this asset.
+			// 为该资产生成一个正数价格。
 			priceInt := rapid.Int64Range(1, 100000).Draw(rt, asset+"_price")
 			price := decimal.NewFromInt(priceInt)
 
 			cache[asset] = BalanceInfo{Free: free, Locked: locked}
 			prices[asset+"USDT"] = price
 
-			// Manual expected calculation: (free + locked) * price
+			// 手动计算预期值: (可用 + 冻结) * 价格
 			amount := free.Add(locked)
 			expectedTotal = expectedTotal.Add(amount.Mul(price))
 		}
 
-		// Optionally add a USDT balance (counted at 1:1).
+		// 可选添加 USDT 余额（按 1:1 计算）。
 		hasUSDT := rapid.Bool().Draw(rt, "hasUSDT")
 		if hasUSDT {
 			usdtFreeInt := rapid.Int64Range(0, 1000000).Draw(rt, "USDT_free")
@@ -374,7 +373,7 @@ func TestProperty10_TotalAssetValueCalculation(t *testing.T) {
 			expectedTotal = expectedTotal.Add(usdtFree.Add(usdtLocked))
 		}
 
-		// Set up the service with the generated data.
+		// 使用生成的数据设置服务。
 		pricer := &mockMarketPricer{prices: prices}
 		svc, _, _ := newTestService(t, &mockBinanceClient{}, pricer)
 
@@ -382,7 +381,7 @@ func TestProperty10_TotalAssetValueCalculation(t *testing.T) {
 		svc.cache = cache
 		svc.mu.Unlock()
 
-		// Call GetTotalAssetValue and verify.
+		// 调用 GetTotalAssetValue 并验证。
 		total, err := svc.GetTotalAssetValue()
 		if err != nil {
 			rt.Fatalf("unexpected error: %v", err)
@@ -403,7 +402,7 @@ func TestProperty11_PnLCalculationIncludesFees(t *testing.T) {
 		symbol := "BTCUSDT"
 		baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-		// Generate 1-10 trades with random BUY/SELL sides.
+		// 生成 1-10 笔随机买卖方向的交易。
 		numTrades := rapid.IntRange(1, 10).Draw(rt, "numTrades")
 
 		var expectedBuyAmount decimal.Decimal
@@ -412,7 +411,7 @@ func TestProperty11_PnLCalculationIncludesFees(t *testing.T) {
 
 		for i := 0; i < numTrades; i++ {
 			side := rapid.SampledFrom([]string{"BUY", "SELL"}).Draw(rt, "side")
-			// Use integer amounts to avoid floating point precision issues.
+			// 使用整数金额以避免浮点精度问题。
 			amountInt := rapid.Int64Range(1, 1000000).Draw(rt, "amount")
 			feeInt := rapid.Int64Range(0, 10000).Draw(rt, "fee")
 			priceInt := rapid.Int64Range(1, 100000).Draw(rt, "price")
@@ -448,7 +447,7 @@ func TestProperty11_PnLCalculationIncludesFees(t *testing.T) {
 			expectedTotalFees = expectedTotalFees.Add(fee)
 		}
 
-		// Verify GetPositionPnL: RealizedPnL == SellAmount - BuyAmount - TotalFees
+		// 验证 GetPositionPnL: 已实现盈亏 == 卖出金额 - 买入金额 - 总手续费
 		pnl, err := svc.GetPositionPnL(symbol)
 		if err != nil {
 			rt.Fatalf("GetPositionPnL error: %v", err)
@@ -473,7 +472,7 @@ func TestProperty11_PnLCalculationIncludesFees(t *testing.T) {
 			rt.Fatalf("TradeCount = %d, want %d", pnl.TradeCount, numTrades)
 		}
 
-		// Verify GetFeeStats: TotalFees == sum of all individual trade fees
+		// 验证 GetFeeStats: 总手续费 == 所有单笔交易手续费之和
 		stats, err := svc.GetFeeStats()
 		if err != nil {
 			rt.Fatalf("GetFeeStats error: %v", err)

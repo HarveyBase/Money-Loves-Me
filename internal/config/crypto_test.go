@@ -10,7 +10,7 @@ import (
 	"pgregory.net/rapid"
 )
 
-// generateTestKey creates a random 32-byte key for testing.
+// generateTestKey 创建一个用于测试的随机 32 字节密钥。
 func generateTestKey(t *testing.T) []byte {
 	t.Helper()
 	key := make([]byte, 32)
@@ -132,7 +132,7 @@ func TestDecrypt_TamperedCiphertext(t *testing.T) {
 		t.Fatalf("Encrypt failed: %v", err)
 	}
 
-	// Tamper with the ciphertext
+	// 篡改密文
 	data, _ := base64.StdEncoding.DecodeString(encrypted)
 	if len(data) > 0 {
 		data[len(data)-1] ^= 0xFF
@@ -167,31 +167,31 @@ func TestEncryptDecrypt_EmptyString(t *testing.T) {
 // Validates: Requirements 1.4, 12.2
 func TestProperty1_AESEncryptionRoundTrip(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate a random 32-byte AES-256 key
+		// 生成一个随机的 32 字节 AES-256 密钥
 		key := make([]byte, 32)
 		for i := range key {
 			key[i] = rapid.Byte().Draw(t, fmt.Sprintf("key[%d]", i))
 		}
 
-		// Generate an arbitrary plaintext string
+		// 生成一个任意的明文字符串
 		plaintext := rapid.String().Draw(t, "plaintext")
 
-		// Encrypt the plaintext
+		// 加密明文
 		encrypted, err := Encrypt(key, plaintext)
 		if err != nil {
 			t.Fatalf("Encrypt failed: %v", err)
 		}
 
-		// The base64-encoded ciphertext must not contain the original plaintext.
-		// Short plaintext (≤2 chars) can coincidentally appear in base64 output,
-		// so we only assert this for strings long enough to be meaningful.
+		// base64 编码的密文不应包含原始明文。
+		// 短明文（≤2 个字符）可能偶然出现在 base64 输出中，
+		// 因此仅对足够长的字符串进行此断言。
 		if len(plaintext) > 2 {
 			if strings.Contains(encrypted, plaintext) {
 				t.Fatalf("ciphertext %q contains plaintext %q", encrypted, plaintext)
 			}
 		}
 
-		// Decrypt and verify round-trip equality
+		// 解密并验证往返一致性
 		decrypted, err := Decrypt(key, encrypted)
 		if err != nil {
 			t.Fatalf("Decrypt failed: %v", err)

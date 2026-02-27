@@ -20,13 +20,19 @@ import (
 func main() {
 	fmt.Println("Money Loves Me - Binance Trading System")
 
-	// Load configuration
-	cfg, err := config.Load("configs/config.yaml")
+	// 支持通过命令行参数指定配置文件，默认使用 configs/config.yaml
+	configPath := "configs/config.yaml"
+	if len(os.Args) > 1 {
+		configPath = os.Args[1]
+	}
+
+	// 加载配置
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Initialize logger
+	// 初始化日志
 	logger, err := applogger.NewLogger("system", cfg.Log)
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
@@ -34,7 +40,7 @@ func main() {
 	defer logger.Sync()
 	logger.Info("Starting trading system...")
 
-	// Initialize database
+	// 初始化数据库
 	db, err := model.InitDB(cfg.Database)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
@@ -44,7 +50,7 @@ func main() {
 	}
 	logger.Info("Database connected and migrated")
 
-	// Initialize stores
+	// 初始化存储层
 	userStore := store.NewUserStore(db)
 	_ = store.NewStrategyStore(db)
 	_ = store.NewOrderStore(db)
@@ -55,19 +61,19 @@ func main() {
 	_ = store.NewRiskStore(db)
 	_ = store.NewAccountStore(db)
 
-	// Initialize auth and HTTP handler
+	// 初始化认证服务和 HTTP 处理器
 	authService := server.NewAuthService(userStore)
 	handler := server.NewHandler(authService)
 
-	// Initialize WebSocket hub
+	// 初始化 WebSocket Hub
 	wsHub := server.NewWebSocketHub()
 	go wsHub.Run()
 
-	// Create HTTP server
+	// 创建 HTTP 服务器
 	srv := server.NewServer(authService, handler)
 	srv.Router().GET("/ws", server.HandleWebSocket(wsHub))
 
-	// Start HTTP server
+	// 启动 HTTP 服务器
 	addr := fmt.Sprintf(":%d", cfg.Server.Port)
 	httpServer := &http.Server{
 		Addr:    addr,
@@ -81,7 +87,7 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown
+	// 优雅关闭
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit

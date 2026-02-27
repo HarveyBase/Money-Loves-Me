@@ -34,49 +34,49 @@ func createTestUser(t testing.TB, us *store.UserStore, username, password string
 }
 
 // Feature: binance-trading-system, Property 27: 账户锁定机制
-// After 3 consecutive failed login attempts, the account is locked for 15 minutes.
-// During lockout, even correct passwords are rejected.
-// **Validates: Requirements 12.5**
+// 连续3次登录失败后，账户将被锁定15分钟。
+// 在锁定期间，即使输入正确密码也会被拒绝。
+// **验证: 需求 12.5**
 func TestProperty27_AccountLockoutMechanism(t *testing.T) {
 	db := setupAuthTestDB(t)
 	us := store.NewUserStore(db)
 	auth := NewAuthService(us)
 
 	rapid.Check(t, func(rt *rapid.T) {
-		// Clean up
+		// 清理数据
 		db.Exec("DELETE FROM users")
 
 		username := rapid.StringMatching(`[a-z]{5,10}`).Draw(rt, "username")
 		password := rapid.StringMatching(`[a-zA-Z0-9]{8,16}`).Draw(rt, "password")
 		wrongPassword := password + "wrong"
 
-		// Create user directly (avoid passing rapid.T)
+		// 直接创建用户（避免传递 rapid.T）
 		hash, err := HashPassword(password)
 		require.NoError(t, err)
 		require.NoError(t, us.Create(&model.User{Username: username, PasswordHash: hash}))
 
-		// Verify login works initially
+		// 验证初始登录正常
 		resp, err := auth.Login(username, password)
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 
-		// Reset for the lockout test
+		// 为锁定测试重置状态
 		db.Exec("UPDATE users SET failed_login_count = 0, locked_until = NULL WHERE username = ?", username)
 
-		// Fail 3 times consecutively
+		// 连续失败3次
 		for i := 0; i < maxFailedAttempts; i++ {
 			_, err := auth.Login(username, wrongPassword)
-			assert.Error(t, err, "attempt %d should fail", i+1)
+			assert.Error(t, err, "第 %d 次尝试应该失败", i+1)
 		}
 
-		// Account should now be locked
+		// 账户现在应该被锁定
 		locked, err := auth.IsAccountLocked(username)
 		assert.NoError(t, err)
-		assert.True(t, locked, "account should be locked after %d failed attempts", maxFailedAttempts)
+		assert.True(t, locked, "在 %d 次失败尝试后账户应该被锁定", maxFailedAttempts)
 
-		// Even correct password should be rejected during lockout
+		// 在锁定期间即使正确密码也应被拒绝
 		_, err = auth.Login(username, password)
-		assert.Error(t, err, "login should fail during lockout even with correct password")
+		assert.Error(t, err, "在锁定期间即使密码正确也应该登录失败")
 	})
 }
 

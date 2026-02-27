@@ -13,7 +13,7 @@ import (
 	"pgregory.net/rapid"
 )
 
-// --- Test doubles ---
+// --- 测试替身 ---
 
 type mockRiskStore struct {
 	config *model.RiskConfig
@@ -69,7 +69,7 @@ func newTestRiskManager(store RiskStore, pauser StrategyPauser) (*RiskManager, *
 	return rm, notifStore
 }
 
-// --- CheckOrder tests ---
+// --- CheckOrder 测试 ---
 
 func TestCheckOrder_WithinLimits(t *testing.T) {
 	rm, _ := newTestRiskManager(&mockRiskStore{}, nil)
@@ -108,12 +108,12 @@ func TestCheckOrder_ExceedsPositionRatio(t *testing.T) {
 
 func TestCheckOrder_NoLimitsConfigured(t *testing.T) {
 	rm, _ := newTestRiskManager(&mockRiskStore{}, nil)
-	// Zero-value config means no limits.
+	// 零值配置表示没有限制。
 	err := rm.CheckOrder("BTCUSDT", decimal.NewFromInt(999999), decimal.NewFromInt(10000))
 	assert.NoError(t, err)
 }
 
-// --- CheckDailyLoss tests ---
+// --- CheckDailyLoss 测试 ---
 
 func TestCheckDailyLoss_BelowThreshold(t *testing.T) {
 	rm, _ := newTestRiskManager(&mockRiskStore{}, nil)
@@ -124,7 +124,7 @@ func TestCheckDailyLoss_BelowThreshold(t *testing.T) {
 		{Side: "BUY", Amount: decimal.NewFromInt(500), Fee: decimal.NewFromInt(1), ExecutedAt: now},
 		{Side: "SELL", Amount: decimal.NewFromInt(400), Fee: decimal.NewFromInt(1), ExecutedAt: now},
 	}
-	// Loss = 500 - 400 + 1 + 1 = 102
+	// 亏损 = 500 - 400 + 1 + 1 = 102
 	shouldPause, loss := rm.CheckDailyLoss(trades)
 	assert.False(t, shouldPause)
 	assert.True(t, loss.Equal(decimal.NewFromInt(102)))
@@ -139,7 +139,7 @@ func TestCheckDailyLoss_ExceedsThreshold(t *testing.T) {
 		{Side: "BUY", Amount: decimal.NewFromInt(500), Fee: decimal.NewFromInt(5), ExecutedAt: now},
 		{Side: "SELL", Amount: decimal.NewFromInt(300), Fee: decimal.NewFromInt(5), ExecutedAt: now},
 	}
-	// Loss = 500 - 300 + 5 + 5 = 210
+	// 亏损 = 500 - 300 + 5 + 5 = 210
 	shouldPause, loss := rm.CheckDailyLoss(trades)
 	assert.True(t, shouldPause)
 	assert.True(t, loss.Equal(decimal.NewFromInt(210)))
@@ -158,7 +158,7 @@ func TestCheckDailyLoss_IgnoresYesterdayTrades(t *testing.T) {
 	assert.True(t, loss.IsZero())
 }
 
-// --- GenerateStopLossSignal tests ---
+// --- GenerateStopLossSignal 测试 ---
 
 func TestGenerateStopLossSignal_TriggersAtThreshold(t *testing.T) {
 	rm, _ := newTestRiskManager(&mockRiskStore{}, nil)
@@ -166,7 +166,7 @@ func TestGenerateStopLossSignal_TriggersAtThreshold(t *testing.T) {
 		StopLossPercent: map[string]decimal.Decimal{"BTCUSDT": decimal.NewFromInt(5)},
 	})
 
-	// Entry 100, current 94 → loss = 6%
+	// 入场价 100，当前价 94 → 亏损 = 6%
 	signal := rm.GenerateStopLossSignal("BTCUSDT",
 		decimal.NewFromInt(100), decimal.NewFromInt(94), decimal.NewFromInt(1))
 	require.NotNil(t, signal)
@@ -180,7 +180,7 @@ func TestGenerateStopLossSignal_NoTriggerBelowThreshold(t *testing.T) {
 		StopLossPercent: map[string]decimal.Decimal{"BTCUSDT": decimal.NewFromInt(10)},
 	})
 
-	// Entry 100, current 95 → loss = 5% < 10%
+	// 入场价 100，当前价 95 → 亏损 = 5% < 10%
 	signal := rm.GenerateStopLossSignal("BTCUSDT",
 		decimal.NewFromInt(100), decimal.NewFromInt(95), decimal.NewFromInt(1))
 	assert.Nil(t, signal)
@@ -208,7 +208,7 @@ func TestGenerateStopLossSignal_ZeroEntryPrice(t *testing.T) {
 	assert.Nil(t, signal)
 }
 
-// --- PauseAllStrategies tests ---
+// --- PauseAllStrategies 测试 ---
 
 func TestPauseAllStrategies_CallsPauserAndNotifies(t *testing.T) {
 	pauser := &mockPauser{}
@@ -226,11 +226,11 @@ func TestPauseAllStrategies_NilPauser(t *testing.T) {
 
 	err := rm.PauseAllStrategies()
 	assert.NoError(t, err)
-	// Notification should still be sent.
+	// 通知仍应被发送。
 	assert.Len(t, notifStore.notifications, 1)
 }
 
-// --- SaveConfig / LoadConfig tests ---
+// --- SaveConfig / LoadConfig 测试 ---
 
 func TestSaveAndLoadConfig(t *testing.T) {
 	store := &mockRiskStore{}
@@ -248,7 +248,7 @@ func TestSaveAndLoadConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, store.config)
 
-	// Create a new RiskManager and load from the same store.
+	// 创建一个新的 RiskManager 并从同一个 store 加载。
 	rm2, _ := newTestRiskManager(store, nil)
 	err = rm2.LoadConfig()
 	require.NoError(t, err)
@@ -273,7 +273,7 @@ func TestSaveConfig_MarshalsProperly(t *testing.T) {
 	err := rm.SaveConfig()
 	require.NoError(t, err)
 
-	// Verify the JSON fields are valid.
+	// 验证 JSON 字段有效。
 	var slp map[string]decimal.Decimal
 	err = json.Unmarshal(store.config.StopLossPercents, &slp)
 	require.NoError(t, err)
@@ -285,13 +285,13 @@ func TestSaveConfig_MarshalsProperly(t *testing.T) {
 	assert.True(t, mpr["ETHUSDT"].Equal(decimal.NewFromFloat(0.2)))
 }
 
-// --- Property-Based Tests ---
+// --- 属性测试 ---
 
 // Feature: binance-trading-system, Property 13: 风控拒绝超限订单
 // **Validates: Requirements 6.3, 6.7**
 func TestProperty13_RiskRejectsOverLimitOrders(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate positive limits using integers to avoid floating point issues.
+		// 使用整数生成正数限制以避免浮点精度问题。
 		maxOrderAmountInt := rapid.Int64Range(100, 100000).Draw(t, "maxOrderAmount")
 		maxOrderAmount := decimal.NewFromInt(maxOrderAmountInt)
 
@@ -309,22 +309,22 @@ func TestProperty13_RiskRejectsOverLimitOrders(t *testing.T) {
 			MaxPositionRatio: map[string]decimal.Decimal{symbol: maxRatio},
 		})
 
-		// Case 1: Amount exceeds max order amount → should be rejected.
+		// 情况 1：金额超过最大订单金额 → 应被拒绝。
 		overAmountInt := rapid.Int64Range(maxOrderAmountInt+1, maxOrderAmountInt+100000).Draw(t, "overAmount")
 		overAmount := decimal.NewFromInt(overAmountInt)
 		err := rm.CheckOrder(symbol, overAmount, totalAssetValue)
 		assert.Error(t, err, "order exceeding max amount should be rejected")
 
-		// Case 2: Amount within max order amount but ratio exceeds limit → should be rejected.
-		// We need amount/totalAssetValue > maxRatio, i.e. amount > maxRatio * totalAssetValue.
+		// 情况 2：金额在最大订单金额内但比例超限 → 应被拒绝。
+		// 需要 amount/totalAssetValue > maxRatio，即 amount > maxRatio * totalAssetValue。
 		ratioThreshold := maxRatio.Mul(totalAssetValue).IntPart() + 1
-		// Ensure the amount is also within max order amount to isolate the ratio check.
+		// 确保金额也在最大订单金额内，以隔离比例检查。
 		if ratioThreshold > 0 && decimal.NewFromInt(ratioThreshold).LessThanOrEqual(maxOrderAmount) {
 			err = rm.CheckOrder(symbol, decimal.NewFromInt(ratioThreshold), totalAssetValue)
 			assert.Error(t, err, "order exceeding position ratio should be rejected")
 		}
 
-		// Case 3: Amount within both limits → should be accepted.
+		// 情况 3：金额在两个限制内 → 应被接受。
 		safeAmount := maxOrderAmount
 		safeRatioAmount := maxRatio.Mul(totalAssetValue).Truncate(0)
 		if safeRatioAmount.LessThan(safeAmount) {
@@ -349,7 +349,7 @@ func TestProperty14_DailyLossThresholdTriggersStrategyPause(t *testing.T) {
 
 		now := time.Now()
 
-		// Generate a random trade sequence.
+		// 生成随机交易序列。
 		numTrades := rapid.IntRange(1, 20).Draw(t, "numTrades")
 		trades := make([]model.Trade, numTrades)
 		for i := 0; i < numTrades; i++ {
@@ -367,7 +367,7 @@ func TestProperty14_DailyLossThresholdTriggersStrategyPause(t *testing.T) {
 			}
 		}
 
-		// Compute expected daily loss: sum(BUY amounts) - sum(SELL amounts) + sum(all fees).
+		// 计算预期每日亏损：sum(买入金额) - sum(卖出金额) + sum(所有手续费)。
 		expectedLoss := decimal.Zero
 		for _, tr := range trades {
 			switch tr.Side {
@@ -394,7 +394,7 @@ func TestProperty14_DailyLossThresholdTriggersStrategyPause(t *testing.T) {
 // **Validates: Requirements 6.5**
 func TestProperty15_StopLossSignalAtThreshold(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate positive entry price and stop-loss threshold using integers.
+		// 使用整数生成正数入场价和止损阈值。
 		entryPriceInt := rapid.Int64Range(100, 1000000).Draw(t, "entryPrice")
 		entryPrice := decimal.NewFromInt(entryPriceInt)
 
@@ -404,8 +404,8 @@ func TestProperty15_StopLossSignalAtThreshold(t *testing.T) {
 		quantityInt := rapid.Int64Range(1, 1000).Draw(t, "quantity")
 		quantity := decimal.NewFromInt(quantityInt)
 
-		// Generate a current price that may or may not trigger stop-loss.
-		// currentPrice ranges from 1 to entryPrice (we only care about loss scenarios and no-loss).
+		// 生成可能触发或不触发止损的当前价格。
+		// currentPrice 范围从 1 到 entryPrice（我们只关心亏损和无亏损场景）。
 		currentPriceInt := rapid.Int64Range(1, entryPriceInt).Draw(t, "currentPrice")
 		currentPrice := decimal.NewFromInt(currentPriceInt)
 

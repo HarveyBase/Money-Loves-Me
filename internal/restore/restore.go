@@ -9,20 +9,20 @@ import (
 	"money-loves-me/internal/model"
 )
 
-// StrategyStore abstracts strategy persistence for restore.
+// StrategyStore 为恢复功能抽象策略持久化存储。
 type StrategyStore interface {
 	GetAll() ([]model.Strategy, error)
 	Create(strategy *model.Strategy) error
 	Update(strategy *model.Strategy) error
 }
 
-// RiskStore abstracts risk config persistence for restore.
+// RiskStore 为恢复功能抽象风控配置持久化存储。
 type RiskStore interface {
 	Get() (*model.RiskConfig, error)
 	Save(config *model.RiskConfig) error
 }
 
-// StrategyConfig represents a strategy's configuration for save/restore.
+// StrategyConfig 表示策略的保存/恢复配置。
 type StrategyConfig struct {
 	Name   string                     `json:"name"`
 	Type   string                     `json:"type"`
@@ -30,7 +30,7 @@ type StrategyConfig struct {
 	Active bool                       `json:"active"`
 }
 
-// RiskParams represents risk configuration for save/restore.
+// RiskParams 表示风控的保存/恢复配置。
 type RiskParams struct {
 	MaxOrderAmount      decimal.Decimal            `json:"max_order_amount"`
 	MaxDailyLoss        decimal.Decimal            `json:"max_daily_loss"`
@@ -38,18 +38,18 @@ type RiskParams struct {
 	MaxPositionPercents map[string]decimal.Decimal `json:"max_position_percents"`
 }
 
-// ConfigRestorer handles saving and restoring strategy and risk configs from the database.
+// ConfigRestorer 处理从数据库保存和恢复策略及风控配置。
 type ConfigRestorer struct {
 	strategyStore StrategyStore
 	riskStore     RiskStore
 }
 
-// NewConfigRestorer creates a new ConfigRestorer.
+// NewConfigRestorer 创建新的 ConfigRestorer。
 func NewConfigRestorer(ss StrategyStore, rs RiskStore) *ConfigRestorer {
 	return &ConfigRestorer{strategyStore: ss, riskStore: rs}
 }
 
-// SaveStrategyConfigs persists strategy configurations to the database.
+// SaveStrategyConfigs 将策略配置持久化到数据库。
 func (r *ConfigRestorer) SaveStrategyConfigs(configs []StrategyConfig) error {
 	for _, cfg := range configs {
 		paramsJSON, err := json.Marshal(cfg.Params)
@@ -69,7 +69,7 @@ func (r *ConfigRestorer) SaveStrategyConfigs(configs []StrategyConfig) error {
 	return nil
 }
 
-// RestoreStrategyConfigs loads strategy configurations from the database.
+// RestoreStrategyConfigs 从数据库加载策略配置。
 func (r *ConfigRestorer) RestoreStrategyConfigs() ([]StrategyConfig, error) {
 	records, err := r.strategyStore.GetAll()
 	if err != nil {
@@ -92,7 +92,7 @@ func (r *ConfigRestorer) RestoreStrategyConfigs() ([]StrategyConfig, error) {
 	return configs, nil
 }
 
-// SaveRiskConfig persists risk configuration to the database.
+// SaveRiskConfig 将风控配置持久化到数据库。
 func (r *ConfigRestorer) SaveRiskConfig(params RiskParams) error {
 	slJSON, err := json.Marshal(params.StopLossPercents)
 	if err != nil {
@@ -111,7 +111,7 @@ func (r *ConfigRestorer) SaveRiskConfig(params RiskParams) error {
 	return r.riskStore.Save(record)
 }
 
-// RestoreRiskConfig loads risk configuration from the database.
+// RestoreRiskConfig 从数据库加载风控配置。
 func (r *ConfigRestorer) RestoreRiskConfig() (*RiskParams, error) {
 	record, err := r.riskStore.Get()
 	if err != nil {

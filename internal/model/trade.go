@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Trade represents the trades table.
+// Trade 表示 trades 数据表。
 type Trade struct {
 	ID             int64           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	OrderID        int64           `gorm:"column:order_id;not null;index:idx_trades_order_id" json:"order_id"`
@@ -24,16 +24,16 @@ type Trade struct {
 	BalanceAfter   decimal.Decimal `gorm:"column:balance_after;type:decimal(20,8);not null;default:0" json:"balance_after"`
 	ExecutedAt     time.Time       `gorm:"column:executed_at;not null;index:idx_trades_executed_at" json:"executed_at"`
 
-	// Belongs-to relationship
+	// 属于（Belongs-to）关联关系
 	Order Order `gorm:"foreignKey:OrderID;references:ID;constraint:OnDelete:CASCADE,OnUpdate:CASCADE" json:"order,omitempty"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (Trade) TableName() string {
 	return "trades"
 }
 
-// DecisionReasonJSON is the structured representation of the decision_reason JSON column.
+// DecisionReasonJSON 是 decision_reason JSON 列的结构化表示。
 type DecisionReasonJSON struct {
 	Indicators  map[string]float64 `json:"indicators"`
 	TriggerRule string             `json:"trigger_rule"`

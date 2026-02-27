@@ -7,24 +7,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// OrderStore handles CRUD operations for orders.
+// OrderStore 处理订单的 CRUD 操作。
 type OrderStore struct {
 	*Store
 }
 
-// NewOrderStore creates a new OrderStore.
+// NewOrderStore 创建一个新的 OrderStore。
 func NewOrderStore(db *gorm.DB) *OrderStore {
 	return &OrderStore{Store: NewStore(db)}
 }
 
-// Create inserts a new order record.
+// Create 插入一条新的订单记录。
 func (s *OrderStore) Create(order *model.Order) error {
 	return s.withRetry(func() error {
 		return s.db.Create(order).Error
 	})
 }
 
-// GetByID retrieves an order by its primary key.
+// GetByID 根据主键获取订单。
 func (s *OrderStore) GetByID(id int64) (*model.Order, error) {
 	var order model.Order
 	err := s.withRetry(func() error {
@@ -36,14 +36,14 @@ func (s *OrderStore) GetByID(id int64) (*model.Order, error) {
 	return &order, nil
 }
 
-// Update saves changes to an existing order.
+// Update 保存对现有订单的更改。
 func (s *OrderStore) Update(order *model.Order) error {
 	return s.withRetry(func() error {
 		return s.db.Save(order).Error
 	})
 }
 
-// OrderFilter defines filtering criteria for order queries.
+// OrderFilter 定义订单查询的过滤条件。
 type OrderFilter struct {
 	Symbol string
 	Status string
@@ -51,7 +51,7 @@ type OrderFilter struct {
 	End    time.Time
 }
 
-// GetByFilter retrieves orders matching the given filter criteria.
+// GetByFilter 获取符合给定过滤条件的订单。
 func (s *OrderStore) GetByFilter(filter OrderFilter) ([]model.Order, error) {
 	var orders []model.Order
 	err := s.withRetry(func() error {

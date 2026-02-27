@@ -8,24 +8,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// TradeStore handles CRUD operations for trades.
+// TradeStore 处理交易记录的 CRUD 操作。
 type TradeStore struct {
 	*Store
 }
 
-// NewTradeStore creates a new TradeStore.
+// NewTradeStore 创建一个新的 TradeStore。
 func NewTradeStore(db *gorm.DB) *TradeStore {
 	return &TradeStore{Store: NewStore(db)}
 }
 
-// Create inserts a new trade record.
+// Create 插入一条新的交易记录。
 func (s *TradeStore) Create(trade *model.Trade) error {
 	return s.withRetry(func() error {
 		return s.db.Create(trade).Error
 	})
 }
 
-// GetByOrderID retrieves all trades for a given order ID.
+// GetByOrderID 获取指定订单 ID 的所有交易记录。
 func (s *TradeStore) GetByOrderID(orderID int64) ([]model.Trade, error) {
 	var trades []model.Trade
 	err := s.withRetry(func() error {
@@ -37,7 +37,7 @@ func (s *TradeStore) GetByOrderID(orderID int64) ([]model.Trade, error) {
 	return trades, nil
 }
 
-// TradeFilter defines filtering criteria for trade queries.
+// TradeFilter 定义交易查询的过滤条件。
 type TradeFilter struct {
 	Symbol       string
 	StrategyName string
@@ -45,7 +45,7 @@ type TradeFilter struct {
 	End          time.Time
 }
 
-// GetByFilter retrieves trades matching the given filter criteria.
+// GetByFilter 获取符合给定过滤条件的交易记录。
 func (s *TradeStore) GetByFilter(filter TradeFilter) ([]model.Trade, error) {
 	var trades []model.Trade
 	err := s.withRetry(func() error {

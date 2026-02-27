@@ -10,7 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// mockConsumer implements DataConsumer for testing.
+// mockConsumer 实现 DataConsumer 接口，用于测试。
 type mockConsumer struct {
 	mu           sync.Mutex
 	klineUpdates []klineUpdate
@@ -131,7 +131,7 @@ func TestHandleKlineEvent_UpdatesCache(t *testing.T) {
 
 	svc.handleKlineEvent(event)
 
-	// Verify cache was updated.
+	// 验证缓存已更新。
 	svc.mu.RLock()
 	cached := svc.klineCache["BTCUSDT:1m"]
 	svc.mu.RUnlock()
@@ -143,7 +143,7 @@ func TestHandleKlineEvent_UpdatesCache(t *testing.T) {
 		t.Errorf("expected close 42300, got %s", cached[0].Close)
 	}
 
-	// Verify consumer was notified.
+	// 验证消费者已收到通知。
 	if consumer.getKlineCount() != 1 {
 		t.Errorf("expected 1 kline update, got %d", consumer.getKlineCount())
 	}
@@ -161,7 +161,7 @@ func TestHandleKlineEvent_UpdatesExistingKline(t *testing.T) {
 	}
 	svc.mu.Unlock()
 
-	// Same OpenTime should update in place.
+	// 相同的 OpenTime 应该原地更新。
 	event := &binance.WsKlineEvent{
 		Symbol:   "BTCUSDT",
 		Interval: "1m",
@@ -190,7 +190,7 @@ func TestHandleKlineEvent_NilEvent(t *testing.T) {
 	svc := NewMarketDataService(nil, nil, nil)
 	defer svc.Close()
 
-	// Should not panic.
+	// 不应该 panic。
 	svc.handleKlineEvent(nil)
 }
 
@@ -239,7 +239,7 @@ func TestHandleOrderBookEvent_NilEvent(t *testing.T) {
 	svc := NewMarketDataService(nil, nil, nil)
 	defer svc.Close()
 
-	// Should not panic.
+	// 不应该 panic。
 	svc.handleOrderBookEvent(nil)
 }
 
@@ -282,7 +282,7 @@ func TestGetCurrentPrice_FromOrderBook(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Mid-price = (42000 + 42100) / 2 = 42050
+	// 中间价 = (42000 + 42100) / 2 = 42050
 	expected := decimal.NewFromFloat(42050)
 	if !price.Equal(expected) {
 		t.Errorf("expected %s, got %s", expected, price)
@@ -314,12 +314,12 @@ func TestSubscribeDuplicate(t *testing.T) {
 	defer svc.Close()
 
 	consumer := &mockConsumer{}
-	// Manually add subscriber to avoid WebSocket setup.
+	// 手动添加订阅者以避免 WebSocket 设置。
 	svc.mu.Lock()
 	svc.subscribers["BTCUSDT"] = []DataConsumer{consumer}
 	svc.mu.Unlock()
 
-	// Second subscribe with same consumer should be a no-op.
+	// 使用相同消费者的第二次订阅应该是空操作。
 	err := svc.Subscribe("BTCUSDT", consumer)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -419,7 +419,7 @@ func TestKlineCacheBounded(t *testing.T) {
 	svc.subscribers["BTCUSDT"] = []DataConsumer{&mockConsumer{}}
 	svc.mu.Unlock()
 
-	// Add 1001 klines via events.
+	// 通过事件添加 1001 条K线。
 	base := time.Now().Add(-1001 * time.Minute)
 	for i := 0; i < 1001; i++ {
 		event := &binance.WsKlineEvent{
@@ -478,11 +478,11 @@ func TestGetCurrentPrice_PicksMostRecent(t *testing.T) {
 
 	now := time.Now()
 	svc.mu.Lock()
-	// 1m cache has older data.
+	// 1分钟缓存包含较旧的数据。
 	svc.klineCache["BTCUSDT:1m"] = []binance.Kline{
 		{OpenTime: now.Add(-2 * time.Minute), Close: decimal.NewFromFloat(41000), CloseTime: now.Add(-time.Minute)},
 	}
-	// 5m cache has newer data.
+	// 5分钟缓存包含较新的数据。
 	svc.klineCache["BTCUSDT:5m"] = []binance.Kline{
 		{OpenTime: now.Add(-5 * time.Minute), Close: decimal.NewFromFloat(42000), CloseTime: now},
 	}
@@ -492,7 +492,7 @@ func TestGetCurrentPrice_PicksMostRecent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	// Should pick the 5m price since its CloseTime is more recent.
+	// 应该选择5分钟的价格，因为其 CloseTime 更近。
 	if !price.Equal(decimal.NewFromFloat(42000)) {
 		t.Errorf("expected 42000 (most recent), got %s", price)
 	}

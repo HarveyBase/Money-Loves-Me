@@ -5,22 +5,22 @@ import (
 	"testing"
 	"time"
 
+	"money-loves-me/internal/model"
+
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
-
-	"money-loves-me/internal/model"
 )
 
 // Feature: binance-trading-system, Property 6: 交易记录完整性
-// For any trade record, it must contain all required non-empty fields:
-// ExecutedAt, Symbol, Side, Price, Quantity, Amount, Fee, StrategyName,
-// DecisionReason, OrderID, BalanceBefore, BalanceAfter.
+// 对于任何交易记录，它必须包含所有必需的非空字段：
+// ExecutedAt、Symbol、Side、Price、Quantity、Amount、Fee、StrategyName、
+// DecisionReason、OrderID、BalanceBefore、BalanceAfter。
 //
 // **Validates: Requirements 9.2, 4.3**
 
-// ValidateTrade checks that a trade record has all required non-empty fields.
+// ValidateTrade 检查交易记录是否包含所有必需的非空字段。
 func ValidateTrade(trade *model.Trade) []string {
 	var missing []string
 
@@ -51,7 +51,7 @@ func ValidateTrade(trade *model.Trade) []string {
 	if len(trade.DecisionReason) == 0 {
 		missing = append(missing, "DecisionReason")
 	} else {
-		// Verify DecisionReason is valid JSON with required fields.
+		// 验证 DecisionReason 是包含必需字段的有效 JSON。
 		var reason model.DecisionReasonJSON
 		if err := json.Unmarshal(trade.DecisionReason, &reason); err != nil {
 			missing = append(missing, "DecisionReason(invalid JSON)")
@@ -82,7 +82,7 @@ func ValidateTrade(trade *model.Trade) []string {
 
 func TestProperty6_TradeRecordCompleteness(t *testing.T) {
 	rapid.Check(t, func(rt *rapid.T) {
-		// Generate a complete trade record with all required fields populated.
+		// 生成一条包含所有必需字段的完整交易记录。
 		symbol := rapid.SampledFrom([]string{"BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT"}).Draw(rt, "symbol")
 		side := rapid.SampledFrom([]string{"BUY", "SELL"}).Draw(rt, "side")
 		strategyName := rapid.SampledFrom([]string{"MA_CROSS", "RSI", "BOLLINGER"}).Draw(rt, "strategyName")
@@ -102,7 +102,7 @@ func TestProperty6_TradeRecordCompleteness(t *testing.T) {
 			balanceAfter = decimal.NewFromInt(1)
 		}
 
-		// Generate decision reason with required sub-fields.
+		// 生成包含必需子字段的决策原因。
 		indicatorCount := rapid.IntRange(1, 5).Draw(rt, "indicatorCount")
 		indicators := make(map[string]float64, indicatorCount)
 		indicatorNames := []string{"MA7", "MA25", "RSI", "BB_UPPER", "BB_LOWER", "VOLUME"}
@@ -148,7 +148,7 @@ func TestProperty6_TradeRecordCompleteness(t *testing.T) {
 			ExecutedAt:     executedAt,
 		}
 
-		// Validate: all required fields must be present and non-empty.
+		// 验证：所有必需字段必须存在且非空。
 		missingFields := ValidateTrade(trade)
 		assert.Empty(rt, missingFields,
 			"Trade record should have all required fields populated, missing: %v", missingFields)
@@ -156,9 +156,9 @@ func TestProperty6_TradeRecordCompleteness(t *testing.T) {
 }
 
 func TestProperty6_IncompleteTradeDetected(t *testing.T) {
-	// Verify that ValidateTrade correctly detects missing fields.
+	// 验证 ValidateTrade 能正确检测缺失的字段。
 	rapid.Check(t, func(rt *rapid.T) {
-		// Create a trade with one randomly chosen field left empty/zero.
+		// 创建一条交易记录，随机选择一个字段置为空/零值。
 		fieldToOmit := rapid.IntRange(0, 11).Draw(rt, "fieldToOmit")
 
 		reason := model.DecisionReasonJSON{
@@ -183,7 +183,7 @@ func TestProperty6_IncompleteTradeDetected(t *testing.T) {
 			ExecutedAt:     time.Now(),
 		}
 
-		// Zero out one field.
+		// 将一个字段置零。
 		switch fieldToOmit {
 		case 0:
 			trade.ExecutedAt = time.Time{}

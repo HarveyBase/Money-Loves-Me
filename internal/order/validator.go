@@ -9,17 +9,17 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// ExchangeInfoProvider abstracts access to exchange trading rules, enabling testing.
+// ExchangeInfoProvider 抽象了对交易所交易规则的访问，便于测试。
 type ExchangeInfoProvider interface {
 	GetSymbolInfo(symbol string) (*binance.SymbolInfo, bool)
 }
 
-// MapExchangeInfoProvider implements ExchangeInfoProvider using an in-memory map.
+// MapExchangeInfoProvider 使用内存中的 map 实现 ExchangeInfoProvider。
 type MapExchangeInfoProvider struct {
 	symbols map[string]binance.SymbolInfo
 }
 
-// NewMapExchangeInfoProvider builds a provider from an ExchangeInfo response.
+// NewMapExchangeInfoProvider 根据 ExchangeInfo 响应构建一个 provider。
 func NewMapExchangeInfoProvider(info *binance.ExchangeInfo) *MapExchangeInfoProvider {
 	m := make(map[string]binance.SymbolInfo, len(info.Symbols))
 	for _, s := range info.Symbols {
@@ -28,7 +28,7 @@ func NewMapExchangeInfoProvider(info *binance.ExchangeInfo) *MapExchangeInfoProv
 	return &MapExchangeInfoProvider{symbols: m}
 }
 
-// GetSymbolInfo returns the SymbolInfo for the given symbol.
+// GetSymbolInfo 返回给定交易对的 SymbolInfo。
 func (p *MapExchangeInfoProvider) GetSymbolInfo(symbol string) (*binance.SymbolInfo, bool) {
 	info, ok := p.symbols[symbol]
 	if !ok {
@@ -37,17 +37,17 @@ func (p *MapExchangeInfoProvider) GetSymbolInfo(symbol string) (*binance.SymbolI
 	return &info, true
 }
 
-// OrderValidator validates order parameters against exchange trading rules.
+// OrderValidator 根据交易所交易规则验证订单参数。
 type OrderValidator struct {
 	provider ExchangeInfoProvider
 }
 
-// NewOrderValidator creates a new OrderValidator with the given exchange info provider.
+// NewOrderValidator 使用给定的交易所信息 provider 创建一个新的 OrderValidator。
 func NewOrderValidator(provider ExchangeInfoProvider) *OrderValidator {
 	return &OrderValidator{provider: provider}
 }
 
-// ValidationError holds a list of individual validation failures.
+// ValidationError 保存一组验证失败信息。
 type ValidationError struct {
 	Errors []string
 }
@@ -56,20 +56,20 @@ func (v *ValidationError) Error() string {
 	return fmt.Sprintf("order validation failed: %s", strings.Join(v.Errors, "; "))
 }
 
-// Add appends a validation failure message.
+// Add 追加一条验证失败消息。
 func (v *ValidationError) Add(msg string) {
 	v.Errors = append(v.Errors, msg)
 }
 
-// HasErrors returns true if any validation failures were recorded.
+// HasErrors 如果记录了任何验证失败则返回 true。
 func (v *ValidationError) HasErrors() bool {
 	return len(v.Errors) > 0
 }
 
-// Validate checks the order request against the exchange trading rules.
-// It returns a structured AppError (ErrValidation) wrapping a ValidationError on failure.
+// Validate 根据交易所交易规则检查订单请求。
+// 验证失败时返回一个结构化的 AppError（ErrValidation），其中包装了 ValidationError。
 func (v *OrderValidator) Validate(req binance.CreateOrderRequest) error {
-	// Look up symbol
+	// 查找交易对
 	info, ok := v.provider.GetSymbolInfo(req.Symbol)
 	if !ok {
 		return errors.NewAppError(
@@ -82,17 +82,17 @@ func (v *OrderValidator) Validate(req binance.CreateOrderRequest) error {
 
 	ve := &ValidationError{}
 
-	// Validate LOT_SIZE filter (quantity)
+	// 验证 LOT_SIZE 过滤器（数量）
 	if filter, found := findFilter(info.Filters, "LOT_SIZE"); found {
 		validateLotSize(ve, req.Quantity, filter)
 	}
 
-	// Validate PRICE_FILTER (price)
+	// 验证 PRICE_FILTER（价格）
 	if filter, found := findFilter(info.Filters, "PRICE_FILTER"); found {
 		validatePriceFilter(ve, req.Price, filter)
 	}
 
-	// Validate MIN_NOTIONAL (price * quantity)
+	// 验证 MIN_NOTIONAL（价格 * 数量）
 	if filter, found := findFilter(info.Filters, "MIN_NOTIONAL"); found {
 		validateMinNotional(ve, req.Price, req.Quantity, filter)
 	}
@@ -108,7 +108,7 @@ func (v *OrderValidator) Validate(req binance.CreateOrderRequest) error {
 	return nil
 }
 
-// findFilter returns the first filter matching the given type.
+// findFilter 返回第一个匹配给定类型的过滤器。
 func findFilter(filters []binance.SymbolFilter, filterType string) (binance.SymbolFilter, bool) {
 	for _, f := range filters {
 		if f.FilterType == filterType {
@@ -118,7 +118,7 @@ func findFilter(filters []binance.SymbolFilter, filterType string) (binance.Symb
 	return binance.SymbolFilter{}, false
 }
 
-// validateLotSize checks quantity against MinQty, MaxQty, and StepSize.
+// validateLotSize 检查数量是否符合 MinQty、MaxQty 和 StepSize。
 func validateLotSize(ve *ValidationError, qty decimal.Decimal, f binance.SymbolFilter) {
 	minQty, _ := decimal.NewFromString(f.MinQty)
 	maxQty, _ := decimal.NewFromString(f.MaxQty)
@@ -135,7 +135,7 @@ func validateLotSize(ve *ValidationError, qty decimal.Decimal, f binance.SymbolF
 	}
 }
 
-// validatePriceFilter checks price against MinPrice, MaxPrice, and TickSize.
+// validatePriceFilter 检查价格是否符合 MinPrice、MaxPrice 和 TickSize。
 func validatePriceFilter(ve *ValidationError, price decimal.Decimal, f binance.SymbolFilter) {
 	minPrice, _ := decimal.NewFromString(f.MinPrice)
 	maxPrice, _ := decimal.NewFromString(f.MaxPrice)
@@ -152,7 +152,7 @@ func validatePriceFilter(ve *ValidationError, price decimal.Decimal, f binance.S
 	}
 }
 
-// validateMinNotional checks that price * quantity >= MinNotional.
+// validateMinNotional 检查 价格 * 数量 >= MinNotional。
 func validateMinNotional(ve *ValidationError, price, qty decimal.Decimal, f binance.SymbolFilter) {
 	minNotional, _ := decimal.NewFromString(f.MinNotional)
 	notional := price.Mul(qty)
@@ -161,8 +161,8 @@ func validateMinNotional(ve *ValidationError, price, qty decimal.Decimal, f bina
 	}
 }
 
-// fitsStep returns true if (value - base) is an exact multiple of step.
-// This is the standard Binance check: (value - base) % step == 0.
+// fitsStep 返回 (value - base) 是否是 step 的精确倍数。
+// 这是标准的 Binance 检查：(value - base) % step == 0。
 func fitsStep(value, base, step decimal.Decimal) bool {
 	diff := value.Sub(base)
 	if diff.IsNegative() {

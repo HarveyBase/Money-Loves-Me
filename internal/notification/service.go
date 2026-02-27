@@ -8,7 +8,7 @@ import (
 	"money-loves-me/internal/model"
 )
 
-// EventType represents the type of notification event.
+// EventType 表示通知事件的类型。
 type EventType string
 
 const (
@@ -20,7 +20,7 @@ const (
 	EventOptimizeComplete EventType = "OPTIMIZE_COMPLETE"
 )
 
-// AllEventTypes returns all defined event types.
+// AllEventTypes 返回所有已定义的事件类型。
 func AllEventTypes() []EventType {
 	return []EventType{
 		EventOrderFilled,
@@ -32,7 +32,7 @@ func AllEventTypes() []EventType {
 	}
 }
 
-// NotificationFilter defines filtering criteria for notification queries.
+// NotificationFilter 定义通知查询的过滤条件。
 type NotificationFilter struct {
 	EventType string
 	IsRead    *bool
@@ -40,19 +40,19 @@ type NotificationFilter struct {
 	End       time.Time
 }
 
-// Store defines the persistence interface for notifications.
+// Store 定义通知的持久化接口。
 type Store interface {
 	Create(notification *model.Notification) error
 	GetByFilter(filter NotificationFilter) ([]model.Notification, error)
 	MarkAsRead(id int64) error
 }
 
-// WSPusher defines the interface for pushing notifications via WebSocket.
+// WSPusher 定义通过 WebSocket 推送通知的接口。
 type WSPusher interface {
 	PushNotification(notification *model.Notification) error
 }
 
-// NotificationService manages notification creation, retrieval, and event filtering.
+// NotificationService 管理通知的创建、检索和事件过滤。
 type NotificationService struct {
 	store       Store
 	wsPusher    WSPusher
@@ -60,8 +60,8 @@ type NotificationService struct {
 	mu          sync.RWMutex
 }
 
-// NewNotificationService creates a new NotificationService.
-// All event types are enabled by default.
+// NewNotificationService 创建一个新的 NotificationService。
+// 默认启用所有事件类型。
 func NewNotificationService(store Store, wsPusher WSPusher) *NotificationService {
 	filter := make(map[EventType]bool)
 	for _, et := range AllEventTypes() {
@@ -74,8 +74,8 @@ func NewNotificationService(store Store, wsPusher WSPusher) *NotificationService
 	}
 }
 
-// Send creates a notification, stores it, and pushes via WebSocket
-// if the event type passes the filter.
+// Send 创建一条通知，将其存储，并在事件类型通过过滤器时
+// 通过 WebSocket 推送。
 func (s *NotificationService) Send(eventType EventType, title, description string) error {
 	if title == "" {
 		return fmt.Errorf("notification title must not be empty")
@@ -85,7 +85,7 @@ func (s *NotificationService) Send(eventType EventType, title, description strin
 	enabled, exists := s.eventFilter[eventType]
 	s.mu.RUnlock()
 
-	// If the event type is explicitly disabled, skip silently.
+	// 如果事件类型被明确禁用，则静默跳过。
 	if exists && !enabled {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (s *NotificationService) Send(eventType EventType, title, description strin
 		return fmt.Errorf("failed to store notification: %w", err)
 	}
 
-	// Push via WebSocket if pusher is available (best-effort).
+	// 如果推送器可用，则通过 WebSocket 推送（尽力而为）。
 	if s.wsPusher != nil {
 		_ = s.wsPusher.PushNotification(notification)
 	}
@@ -111,19 +111,19 @@ func (s *NotificationService) Send(eventType EventType, title, description strin
 	return nil
 }
 
-// GetNotifications retrieves notifications matching the filter,
-// ordered by creation time descending (as guaranteed by the store).
+// GetNotifications 检索匹配过滤条件的通知，
+// 按创建时间降序排列（由存储层保证）。
 func (s *NotificationService) GetNotifications(filter NotificationFilter) ([]model.Notification, error) {
 	return s.store.GetByFilter(filter)
 }
 
-// MarkAsRead marks a notification as read by its ID.
+// MarkAsRead 通过 ID 将通知标记为已读。
 func (s *NotificationService) MarkAsRead(id int64) error {
 	return s.store.MarkAsRead(id)
 }
 
-// SetEventFilter configures which event types are enabled for notifications.
-// Events set to true will be delivered; events set to false will be silently dropped by Send.
+// SetEventFilter 配置哪些事件类型启用通知。
+// 设置为 true 的事件将被投递；设置为 false 的事件将被 Send 静默丢弃。
 func (s *NotificationService) SetEventFilter(filters map[EventType]bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -134,7 +134,7 @@ func (s *NotificationService) SetEventFilter(filters map[EventType]bool) error {
 	return nil
 }
 
-// GetEventFilter returns a copy of the current event filter configuration.
+// GetEventFilter 返回当前事件过滤器配置的副本。
 func (s *NotificationService) GetEventFilter() map[EventType]bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

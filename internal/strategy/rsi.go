@@ -16,16 +16,16 @@ const (
 	RSIParamOversold   = "oversold"
 )
 
-// RSIStrategy implements an RSI overbought/oversold strategy.
-// A BUY signal is generated when RSI crosses below the oversold level.
-// A SELL signal is generated when RSI crosses above the overbought level.
+// RSIStrategy 实现了 RSI 超买/超卖策略。
+// 当 RSI 低于超卖水平时生成买入信号。
+// 当 RSI 高于超买水平时生成卖出信号。
 type RSIStrategy struct {
 	period     int
 	overbought decimal.Decimal
 	oversold   decimal.Decimal
 }
 
-// NewRSIStrategy creates a new RSI strategy with default parameters.
+// NewRSIStrategy 使用默认参数创建新的 RSI 策略。
 func NewRSIStrategy() *RSIStrategy {
 	return &RSIStrategy{
 		period:     14,
@@ -34,28 +34,28 @@ func NewRSIStrategy() *RSIStrategy {
 	}
 }
 
-// Name returns the strategy name.
+// Name 返回策略名称。
 func (s *RSIStrategy) Name() string {
 	return RSIName
 }
 
-// Calculate analyzes klines and returns a BUY/SELL signal based on RSI levels.
-// Returns nil if there is insufficient data or RSI is in the neutral zone.
+// Calculate 分析 K 线数据并根据 RSI 水平返回买入/卖出信号。
+// 如果数据不足或 RSI 处于中性区域则返回 nil。
 func (s *RSIStrategy) Calculate(klines []binance.Kline) *Signal {
-	// Need at least period+1 klines to compute RSI (period price changes).
+	// 需要至少 period+1 根 K 线来计算 RSI（period 个价格变动）。
 	if len(klines) < s.period+1 {
 		return nil
 	}
 
 	rsi := s.calcRSI(klines)
 	if rsi.IsNegative() {
-		return nil // not enough data or division issue
+		return nil // 数据不足或除法问题
 	}
 
 	lastKline := klines[len(klines)-1]
 	rsiFloat := rsi.InexactFloat64()
 
-	// Oversold → BUY signal
+	// 超卖 → 买入信号
 	if rsi.LessThanOrEqual(s.oversold) {
 		return &Signal{
 			Strategy:  s.Name(),
@@ -74,7 +74,7 @@ func (s *RSIStrategy) Calculate(klines []binance.Kline) *Signal {
 		}
 	}
 
-	// Overbought → SELL signal
+	// 超买 → 卖出信号
 	if rsi.GreaterThanOrEqual(s.overbought) {
 		return &Signal{
 			Strategy:  s.Name(),
@@ -96,7 +96,7 @@ func (s *RSIStrategy) Calculate(klines []binance.Kline) *Signal {
 	return nil
 }
 
-// GetParams returns the current strategy parameters.
+// GetParams 返回当前策略参数。
 func (s *RSIStrategy) GetParams() StrategyParams {
 	return StrategyParams{
 		RSIParamPeriod:     decimal.NewFromInt(int64(s.period)),
@@ -105,7 +105,7 @@ func (s *RSIStrategy) GetParams() StrategyParams {
 	}
 }
 
-// SetParams updates the strategy parameters.
+// SetParams 更新策略参数。
 func (s *RSIStrategy) SetParams(params StrategyParams) error {
 	p, ok := params[RSIParamPeriod]
 	if !ok {
@@ -140,20 +140,20 @@ func (s *RSIStrategy) SetParams(params StrategyParams) error {
 	return nil
 }
 
-// EstimateFee estimates the trading fee for a given price, quantity, and fee rate.
+// EstimateFee 根据给定的价格、数量和费率估算交易手续费。
 func (s *RSIStrategy) EstimateFee(price, quantity, feeRate decimal.Decimal) decimal.Decimal {
 	return price.Mul(quantity).Mul(feeRate)
 }
 
-// calcRSI computes the RSI value using the last period+1 klines.
-// Uses the standard RSI formula with simple average of gains and losses.
+// calcRSI 使用最近 period+1 根 K 线计算 RSI 值。
+// 使用标准 RSI 公式，基于涨幅和跌幅的简单平均。
 func (s *RSIStrategy) calcRSI(klines []binance.Kline) decimal.Decimal {
 	n := len(klines)
 	if n < s.period+1 {
 		return decimal.NewFromInt(-1)
 	}
 
-	// Use the most recent period+1 klines.
+	// 使用最近的 period+1 根 K 线。
 	recent := klines[n-s.period-1:]
 
 	gains := decimal.Zero
@@ -173,10 +173,10 @@ func (s *RSIStrategy) calcRSI(klines []binance.Kline) decimal.Decimal {
 	avgLoss := losses.Div(periodDec)
 
 	if avgLoss.IsZero() {
-		return decimal.NewFromInt(100) // no losses → RSI = 100
+		return decimal.NewFromInt(100) // 无跌幅 → RSI = 100
 	}
 	if avgGain.IsZero() {
-		return decimal.Zero // no gains → RSI = 0
+		return decimal.Zero // 无涨幅 → RSI = 0
 	}
 
 	rs := avgGain.Div(avgLoss)

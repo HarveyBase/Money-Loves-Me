@@ -145,7 +145,7 @@ func TestValidate_ValidConfig(t *testing.T) {
 	}
 }
 
-// validConfig returns a fully populated valid Config for testing.
+// validConfig 返回一个完整填充的有效 Config，用于测试。
 func validConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
@@ -194,10 +194,10 @@ func validConfig() *Config {
 // Property 25: 对于任意有效配置结构体，序列化为 YAML 后再反序列化应得到等价结构体
 func TestProperty25_YAMLConfigRoundTrip(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate a valid Config using rapid generators
+		// 使用 rapid 生成器生成一个有效的 Config
 		cfg := drawValidConfig(t)
 
-		// Serialize to YAML-compatible map and write to temp file
+		// 序列化为 YAML 兼容的 map 并写入临时文件
 		yamlContent := configToYAML(cfg)
 
 		dir := filepath.Join(os.TempDir(), "config_pbt_"+fmt.Sprintf("%d", time.Now().UnixNano()))
@@ -211,25 +211,25 @@ func TestProperty25_YAMLConfigRoundTrip(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		// Load back using the Load() function (Viper-based)
+		// 使用 Load() 函数（基于 Viper）重新加载
 		loaded, err := Load(cfgPath)
 		if err != nil {
 			t.Fatalf("Load failed: %v\nYAML content:\n%s", err, yamlContent)
 		}
 
-		// Compare field by field
+		// 逐字段比较
 		assertConfigEqual(t, cfg, loaded)
 	})
 }
 
-// drawValidConfig generates a random valid Config using rapid generators.
+// drawValidConfig 使用 rapid 生成器生成一个随机的有效 Config。
 func drawValidConfig(t *rapid.T) *Config {
 	// ServerConfig
 	host := rapid.StringMatching(`[a-z0-9]{1,10}(\.[a-z0-9]{1,10})*`).Draw(t, "server.host")
 	port := rapid.IntRange(1, 65535).Draw(t, "server.port")
 	mode := rapid.SampledFrom([]string{"debug", "release", "test"}).Draw(t, "server.mode")
 
-	// BinanceConfig - non-empty strings without YAML-special characters
+	// BinanceConfig - 不含 YAML 特殊字符的非空字符串
 	apiKey := rapid.StringMatching(`[a-zA-Z0-9]{1,32}`).Draw(t, "binance.api_key")
 	secretKey := rapid.StringMatching(`[a-zA-Z0-9]{1,32}`).Draw(t, "binance.secret_key")
 	baseURL := "https://" + rapid.StringMatching(`[a-z]{1,10}\.[a-z]{2,4}`).Draw(t, "binance.base_url_host")
@@ -248,19 +248,19 @@ func drawValidConfig(t *rapid.T) *Config {
 	maxSizeMB := rapid.IntRange(1, 1000).Draw(t, "log.max_size_mb")
 	maxAgeDays := rapid.IntRange(1, 365).Draw(t, "log.max_age_days")
 
-	// TradingConfig - at least one non-empty pair
+	// TradingConfig - 至少一个非空交易对
 	numPairs := rapid.IntRange(1, 5).Draw(t, "trading.num_pairs")
 	pairs := make([]string, numPairs)
 	for i := 0; i < numPairs; i++ {
 		pairs[i] = rapid.StringMatching(`[A-Z]{3,6}USDT`).Draw(t, fmt.Sprintf("trading.pair_%d", i))
 	}
 
-	// RiskConfig - positive decimals
+	// RiskConfig - 正数 decimal
 	maxOrderAmt := decimal.NewFromInt(int64(rapid.IntRange(1, 100000).Draw(t, "risk.max_order_amount")))
 	maxDailyLoss := decimal.NewFromInt(int64(rapid.IntRange(1, 50000).Draw(t, "risk.max_daily_loss")))
 
-	// StopLossPercent and MaxPositionPercent maps
-	// Note: Viper lowercases all map keys, so we use lowercase symbols to ensure round-trip fidelity.
+	// StopLossPercent 和 MaxPositionPercent 映射
+	// 注意：Viper 会将所有 map 键转为小写，因此使用小写符号以确保往返一致性。
 	numSymbols := rapid.IntRange(1, 3).Draw(t, "risk.num_symbols")
 	stopLoss := make(map[string]decimal.Decimal, numSymbols)
 	maxPos := make(map[string]decimal.Decimal, numSymbols)
@@ -304,7 +304,7 @@ func drawValidConfig(t *rapid.T) *Config {
 	}
 }
 
-// configToYAML serializes a Config to a YAML string compatible with Viper loading.
+// configToYAML 将 Config 序列化为与 Viper 加载兼容的 YAML 字符串。
 func configToYAML(cfg *Config) string {
 	var b strings.Builder
 
@@ -369,8 +369,8 @@ func configToYAML(cfg *Config) string {
 	return b.String()
 }
 
-// assertConfigEqual compares two Config structs field by field,
-// using decimal.Equal() for Decimal fields.
+// assertConfigEqual 逐字段比较两个 Config 结构体，
+// 对 Decimal 字段使用 decimal.Equal() 进行比较。
 func assertConfigEqual(rt *rapid.T, original *Config, loaded *Config) {
 	// Server
 	if original.Server.Host != loaded.Server.Host {
@@ -439,7 +439,7 @@ func assertConfigEqual(rt *rapid.T, original *Config, loaded *Config) {
 		}
 	}
 
-	// Risk - use decimal.Equal for Decimal fields
+	// Risk - 对 Decimal 字段使用 decimal.Equal
 	if !original.Risk.MaxOrderAmount.Equal(loaded.Risk.MaxOrderAmount) {
 		rt.Fatalf("Risk.MaxOrderAmount mismatch: %s vs %s",
 			original.Risk.MaxOrderAmount, loaded.Risk.MaxOrderAmount)
@@ -487,20 +487,20 @@ func assertConfigEqual(rt *rapid.T, original *Config, loaded *Config) {
 // Property 26: 对于任意缺少必填字段或类型错误的配置，验证器应返回错误并拒绝加载
 func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Start with a valid config
+		// 从一个有效配置开始
 		cfg := drawValidConfig(t)
 
-		// Sanity check: the valid config must pass validation
+		// 健全性检查：有效配置必须通过验证
 		if err := cfg.Validate(); err != nil {
 			t.Fatalf("drawValidConfig produced invalid config: %v", err)
 		}
 
-		// Pick a random corruption strategy to apply
+		// 随机选择一种破坏策略进行应用
 		corruptionID := rapid.IntRange(0, 12).Draw(t, "corruption_id")
 
 		switch corruptionID {
 		case 0:
-			// Set a required Binance string field to empty
+			// 将必填的 Binance 字符串字段设为空
 			field := rapid.IntRange(0, 3).Draw(t, "binance_field")
 			switch field {
 			case 0:
@@ -514,7 +514,7 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 
 		case 1:
-			// Set server port to invalid: 0, negative, or > 65535
+			// 将服务器端口设为无效值：0、负数或 > 65535
 			choice := rapid.IntRange(0, 2).Draw(t, "port_choice")
 			switch choice {
 			case 0:
@@ -526,7 +526,7 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 
 		case 2:
-			// Set database port to invalid
+			// 将数据库端口设为无效值
 			choice := rapid.IntRange(0, 2).Draw(t, "db_port_choice")
 			switch choice {
 			case 0:
@@ -538,7 +538,7 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 
 		case 3:
-			// Set a required Database string field to empty
+			// 将必填的数据库字符串字段设为空
 			field := rapid.IntRange(0, 3).Draw(t, "db_field")
 			switch field {
 			case 0:
@@ -552,31 +552,31 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 
 		case 4:
-			// Set log level to an invalid string
+			// 将日志级别设为无效字符串
 			cfg.Log.Level = rapid.StringMatching(`[a-z]{3,8}`).Draw(t, "bad_log_level")
 
 		case 5:
-			// Set log.max_size_mb to zero or negative
+			// 将 log.max_size_mb 设为零或负数
 			cfg.Log.MaxSizeMB = -rapid.IntRange(0, 1000).Draw(t, "bad_max_size")
 
 		case 6:
-			// Set log.max_age_days to zero or negative
+			// 将 log.max_age_days 设为零或负数
 			cfg.Log.MaxAgeDays = -rapid.IntRange(0, 1000).Draw(t, "bad_max_age")
 
 		case 7:
-			// Set default_pairs to empty slice
+			// 将 default_pairs 设为空切片
 			cfg.Trading.DefaultPairs = []string{}
 
 		case 8:
-			// Set risk.max_order_amount to zero
+			// 将 risk.max_order_amount 设为零
 			cfg.Risk.MaxOrderAmount = decimal.Zero
 
 		case 9:
-			// Set risk.max_order_amount to negative
+			// 将 risk.max_order_amount 设为负数
 			cfg.Risk.MaxOrderAmount = decimal.NewFromInt(-int64(rapid.IntRange(1, 100000).Draw(t, "neg_order_amt")))
 
 		case 10:
-			// Set risk.max_daily_loss to zero or negative
+			// 将 risk.max_daily_loss 设为零或负数
 			choice := rapid.IntRange(0, 1).Draw(t, "daily_loss_choice")
 			if choice == 0 {
 				cfg.Risk.MaxDailyLoss = decimal.Zero
@@ -585,7 +585,7 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 
 		case 11:
-			// Set optimizer.max_param_change to <= 0 or > 1.0
+			// 将 optimizer.max_param_change 设为 <= 0 或 > 1.0
 			choice := rapid.IntRange(0, 1).Draw(t, "param_change_choice")
 			if choice == 0 {
 				// <= 0
@@ -596,7 +596,7 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 
 		case 12:
-			// Set optimizer.lookback_days or interval to zero/negative
+			// 将 optimizer.lookback_days 或 interval 设为零/负数
 			field := rapid.IntRange(0, 1).Draw(t, "opt_field")
 			if field == 0 {
 				cfg.Optimizer.LookbackDays = -rapid.IntRange(0, 365).Draw(t, "neg_lookback")
@@ -605,7 +605,7 @@ func TestProperty26_ValidateRejectsInvalidConfig(t *testing.T) {
 			}
 		}
 
-		// The corrupted config must fail validation
+		// 被破坏的配置必须验证失败
 		err := cfg.Validate()
 		if err == nil {
 			t.Fatalf("expected Validate() to return error for corruption %d, but got nil", corruptionID)

@@ -2,8 +2,8 @@
 
 package tools
 
-// This file ensures Go module dependencies are tracked before they are used in code.
-// These imports will be used by subsequent implementation tasks.
+// 此文件确保 Go 模块依赖在代码中使用之前被跟踪。
+// 这些导入将被后续的实现任务使用。
 import (
 	_ "github.com/gin-gonic/gin"
 	_ "github.com/gorilla/websocket"

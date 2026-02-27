@@ -52,7 +52,7 @@ func validateJWT(secret []byte, token string) (string, error) {
 		return "", fmt.Errorf("invalid token format")
 	}
 
-	// Verify signature
+	// 验证签名
 	signingInput := parts[0] + "." + parts[1]
 	mac := hmac.New(sha256.New, secret)
 	mac.Write([]byte(signingInput))
@@ -62,7 +62,7 @@ func validateJWT(secret []byte, token string) (string, error) {
 		return "", fmt.Errorf("invalid signature")
 	}
 
-	// Decode claims
+	// 解码声明
 	claimsJSON, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return "", fmt.Errorf("invalid claims encoding")

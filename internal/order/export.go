@@ -14,7 +14,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// CSVHeaders defines the column headers for trade CSV export.
+// CSVHeaders 定义交易 CSV 导出的列标题。
 var CSVHeaders = []string{
 	"ID",
 	"OrderID",
@@ -32,7 +32,7 @@ var CSVHeaders = []string{
 	"ExecutedAt",
 }
 
-// ExportCSV writes trades matching the given time range to the writer in CSV format.
+// ExportCSV 将匹配给定时间范围的交易记录以 CSV 格式写入 writer。
 func ExportCSV(tradeStore TradeStoreInterface, start, end time.Time, writer io.Writer) error {
 	trades, err := tradeStore.GetByFilter(store.TradeFilter{
 		Start: start,
@@ -45,17 +45,17 @@ func ExportCSV(tradeStore TradeStoreInterface, start, end time.Time, writer io.W
 	return WriteTradesCSV(trades, writer)
 }
 
-// WriteTradesCSV writes a slice of trades to the writer in CSV format.
+// WriteTradesCSV 将交易切片以 CSV 格式写入 writer。
 func WriteTradesCSV(trades []model.Trade, writer io.Writer) error {
 	w := csv.NewWriter(writer)
 	defer w.Flush()
 
-	// Write header row.
+	// 写入表头行。
 	if err := w.Write(CSVHeaders); err != nil {
 		return fmt.Errorf("failed to write CSV header: %w", err)
 	}
 
-	// Write each trade as a row.
+	// 将每条交易记录写为一行。
 	for _, trade := range trades {
 		record := []string{
 			strconv.FormatInt(trade.ID, 10),
@@ -81,11 +81,11 @@ func WriteTradesCSV(trades []model.Trade, writer io.Writer) error {
 	return nil
 }
 
-// ParseTradesCSV reads trades from a CSV reader. This is the inverse of WriteTradesCSV.
+// ParseTradesCSV 从 CSV reader 中读取交易记录。这是 WriteTradesCSV 的逆操作。
 func ParseTradesCSV(reader io.Reader) ([]model.Trade, error) {
 	r := csv.NewReader(reader)
 
-	// Read and validate header.
+	// 读取并验证表头。
 	header, err := r.Read()
 	if err != nil {
 		return nil, fmt.Errorf("failed to read CSV header: %w", err)

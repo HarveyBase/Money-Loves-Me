@@ -6,24 +6,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// UserStore handles CRUD operations for users.
+// UserStore 处理用户的 CRUD 操作。
 type UserStore struct {
 	*Store
 }
 
-// NewUserStore creates a new UserStore.
+// NewUserStore 创建一个新的 UserStore。
 func NewUserStore(db *gorm.DB) *UserStore {
 	return &UserStore{Store: NewStore(db)}
 }
 
-// Create inserts a new user record.
+// Create 插入一条新的用户记录。
 func (s *UserStore) Create(user *model.User) error {
 	return s.withRetry(func() error {
 		return s.db.Create(user).Error
 	})
 }
 
-// GetByUsername retrieves a user by their unique username.
+// GetByUsername 根据唯一用户名获取用户。
 func (s *UserStore) GetByUsername(username string) (*model.User, error) {
 	var user model.User
 	err := s.withRetry(func() error {
@@ -35,7 +35,7 @@ func (s *UserStore) GetByUsername(username string) (*model.User, error) {
 	return &user, nil
 }
 
-// Update saves changes to an existing user.
+// Update 保存对现有用户的更改。
 func (s *UserStore) Update(user *model.User) error {
 	return s.withRetry(func() error {
 		return s.db.Save(user).Error

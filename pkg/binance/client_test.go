@@ -16,23 +16,22 @@ import (
 // Feature: binance-trading-system, Property 3: 无效凭证返回结构化错误
 // Validates: Requirements 1.2
 //
-// Property 3: For any arbitrary invalid API Key or Secret Key, authenticated
-// requests should return an error containing an error code and description,
-// and should never return a success response.
+// Property 3: 对于任意无效的 API Key 或 Secret Key，认证请求应返回包含
+// 错误码和描述的错误，且永远不应返回成功响应。
 
 func TestProperty3_InvalidCredentialsReturnStructuredError(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate arbitrary invalid API key and secret key.
+		// 生成任意无效的 API key 和 secret key。
 		apiKey := rapid.String().Draw(t, "apiKey")
 		secretKey := rapid.String().Draw(t, "secretKey")
 
-		// Pick a random HTTP status code that Binance would return for auth failures.
+		// 随机选择一个 Binance 在认证失败时会返回的 HTTP 状态码。
 		authErrorCode := rapid.SampledFrom([]int{
 			http.StatusUnauthorized, // 401
 			http.StatusForbidden,    // 403
 		}).Draw(t, "httpStatus")
 
-		// Generate a random Binance-style error response body.
+		// 生成一个随机的 Binance 风格错误响应体。
 		binanceErrCode := rapid.IntRange(-2000, -1000).Draw(t, "binanceErrCode")
 		binanceErrMsg := rapid.StringMatching(`[a-zA-Z0-9 ]{1,50}`).Draw(t, "binanceErrMsg")
 
@@ -41,7 +40,7 @@ func TestProperty3_InvalidCredentialsReturnStructuredError(t *testing.T) {
 			"msg":  binanceErrMsg,
 		})
 
-		// Create a mock server that always returns the auth error for signed endpoints.
+		// 创建一个模拟服务器，对签名端点始终返回认证错误。
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(authErrorCode)
 			w.Write(errBody)
@@ -51,7 +50,7 @@ func TestProperty3_InvalidCredentialsReturnStructuredError(t *testing.T) {
 		client := NewBinanceClient(apiKey, secretKey, WithBaseURL(server.URL))
 		defer client.Close()
 
-		// Pick a random authenticated method to call.
+		// 随机选择一个认证方法进行调用。
 		type authMethod struct {
 			name string
 			call func() error
@@ -71,32 +70,32 @@ func TestProperty3_InvalidCredentialsReturnStructuredError(t *testing.T) {
 
 		method := methods[rapid.IntRange(0, len(methods)-1).Draw(t, "methodIndex")]
 
-		// Execute the authenticated request.
+		// 执行认证请求。
 		err := method.call()
 
-		// --- Sub-property 1: Error must not be nil (never returns success) ---
+		// --- 子属性 1：错误不能为 nil（永远不返回成功） ---
 		if err == nil {
 			t.Fatalf("method %s returned nil error for invalid credentials (apiKey=%q, secretKey=%q)",
 				method.name, apiKey, secretKey)
 		}
 
-		// --- Sub-property 2: Error must be a structured AppError ---
+		// --- 子属性 2：错误必须是结构化的 AppError ---
 		var appErr *apperrors.AppError
 		if !errors.As(err, &appErr) {
 			t.Fatalf("method %s returned non-AppError type %T: %v", method.name, err, err)
 		}
 
-		// --- Sub-property 3: AppError must have a valid error code ---
+		// --- 子属性 3：AppError 必须包含有效的错误码 ---
 		if appErr.Code == 0 {
 			t.Fatalf("method %s returned AppError with zero Code", method.name)
 		}
 
-		// --- Sub-property 4: AppError must have a non-empty message ---
+		// --- 子属性 4：AppError 必须包含非空的消息 ---
 		if appErr.Message == "" {
 			t.Fatalf("method %s returned AppError with empty Message", method.name)
 		}
 
-		// --- Sub-property 5: The error message should contain the HTTP status code ---
+		// --- 子属性 5：错误消息应包含 HTTP 状态码 ---
 		expectedFragment := fmt.Sprintf("HTTP %d", authErrorCode)
 		if len(appErr.Message) < len(expectedFragment) {
 			t.Fatalf("method %s: AppError message %q is too short to contain status info", method.name, appErr.Message)

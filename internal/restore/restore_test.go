@@ -25,20 +25,20 @@ func setupTestDB(t testing.TB) *gorm.DB {
 }
 
 // Feature: binance-trading-system, Property 29: 策略配置启动恢复
-// For any saved strategy configs and risk params, after restore the configs
-// should be exactly identical to what was saved.
+// 对于任何已保存的策略配置和风控参数，恢复后的配置
+// 应与保存时完全一致。
 // **Validates: Requirements 9.4**
 func TestProperty29_StrategyConfigStartupRestore(t *testing.T) {
 	db := setupTestDB(t)
 	rapid.Check(t, func(t *rapid.T) {
-		// Clean tables between iterations
+		// 在迭代之间清理表
 		db.Exec("DELETE FROM strategies")
 		db.Exec("DELETE FROM risk_configs")
 		ss := store.NewStrategyStore(db)
 		rs := store.NewRiskStore(db)
 		restorer := NewConfigRestorer(ss, rs)
 
-		// Generate random strategy configs
+		// 生成随机策略配置
 		numStrategies := rapid.IntRange(1, 5).Draw(t, "numStrategies")
 		originalConfigs := make([]StrategyConfig, numStrategies)
 		for i := 0; i < numStrategies; i++ {
@@ -59,11 +59,11 @@ func TestProperty29_StrategyConfigStartupRestore(t *testing.T) {
 			}
 		}
 
-		// Save strategy configs
+		// 保存策略配置
 		err := restorer.SaveStrategyConfigs(originalConfigs)
 		require.NoError(t, err)
 
-		// Restore strategy configs
+		// 恢复策略配置
 		restored, err := restorer.RestoreStrategyConfigs()
 		require.NoError(t, err)
 		require.Len(t, restored, len(originalConfigs))
@@ -80,7 +80,7 @@ func TestProperty29_StrategyConfigStartupRestore(t *testing.T) {
 			}
 		}
 
-		// Generate and save random risk params
+		// 生成并保存随机风控参数
 		riskParams := RiskParams{
 			MaxOrderAmount: decimal.NewFromFloat(rapid.Float64Range(100, 10000).Draw(t, "maxOrder")),
 			MaxDailyLoss:   decimal.NewFromFloat(rapid.Float64Range(50, 5000).Draw(t, "maxLoss")),

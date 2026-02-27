@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// BacktestResult represents the backtest_results table.
+// BacktestResult 表示 backtest_results 数据表。
 type BacktestResult struct {
 	ID             int64           `gorm:"column:id;primaryKey;autoIncrement" json:"id"`
 	StrategyName   string          `gorm:"column:strategy_name;type:varchar(50);not null;index:idx_backtest_results_strategy_name" json:"strategy_name"`
@@ -29,7 +29,7 @@ type BacktestResult struct {
 	CreatedAt      time.Time       `gorm:"column:created_at;autoCreateTime;index:idx_backtest_results_created_at" json:"created_at"`
 }
 
-// TableName overrides the default table name.
+// TableName 覆盖默认的表名。
 func (BacktestResult) TableName() string {
 	return "backtest_results"
 }

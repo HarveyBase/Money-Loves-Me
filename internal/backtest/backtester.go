@@ -12,7 +12,7 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// BacktestConfig holds the configuration for a single backtest run.
+// BacktestConfig 保存单次回测运行的配置。
 type BacktestConfig struct {
 	Symbol     string
 	Strategy   strategy.Strategy
@@ -20,65 +20,65 @@ type BacktestConfig struct {
 	EndTime    time.Time
 	InitialCap decimal.Decimal
 	FeeRate    strategy.FeeRate
-	Slippage   decimal.Decimal // slippage percentage, e.g. 0.001 = 0.1%
+	Slippage   decimal.Decimal // 滑点百分比，例如 0.001 = 0.1%
 }
 
-// BacktestTrade represents a single trade executed during backtesting.
+// BacktestTrade 表示回测期间执行的单笔交易。
 type BacktestTrade struct {
 	Timestamp   time.Time       `json:"timestamp"`
-	Side        string          `json:"side"` // BUY or SELL
+	Side        string          `json:"side"` // BUY 或 SELL
 	SignalPrice decimal.Decimal `json:"signal_price"`
 	ExecPrice   decimal.Decimal `json:"exec_price"`
 	Quantity    decimal.Decimal `json:"quantity"`
-	Amount      decimal.Decimal `json:"amount"` // exec_price * quantity
+	Amount      decimal.Decimal `json:"amount"` // 执行价格 * 数量
 	Fee         decimal.Decimal `json:"fee"`
-	PnL         decimal.Decimal `json:"pnl"` // realized PnL for SELL trades
+	PnL         decimal.Decimal `json:"pnl"` // 卖出交易的已实现盈亏
 }
 
-// EquityPoint represents a point on the equity curve.
+// EquityPoint 表示权益曲线上的一个点。
 type EquityPoint struct {
 	Timestamp time.Time       `json:"timestamp"`
 	Equity    decimal.Decimal `json:"equity"`
 }
 
-// BacktestResult holds the complete results of a backtest run.
+// BacktestResult 保存回测运行的完整结果。
 type BacktestResult struct {
-	TotalReturn  decimal.Decimal // total return percentage
-	NetProfit    decimal.Decimal // net profit after fees
-	GrossProfit  decimal.Decimal // gross profit before fees
-	MaxDrawdown  decimal.Decimal // maximum drawdown percentage
-	WinRate      decimal.Decimal // winning trade ratio
-	ProfitFactor decimal.Decimal // profit factor (gross profit / gross loss)
+	TotalReturn  decimal.Decimal // 总收益率
+	NetProfit    decimal.Decimal // 扣除手续费后的净利润
+	GrossProfit  decimal.Decimal // 扣除手续费前的毛利润
+	MaxDrawdown  decimal.Decimal // 最大回撤百分比
+	WinRate      decimal.Decimal // 盈利交易比率
+	ProfitFactor decimal.Decimal // 盈亏比（毛利润 / 毛亏损）
 	TotalTrades  int
 	TotalFees    decimal.Decimal
 	Trades       []BacktestTrade
 	EquityCurve  []EquityPoint
 }
 
-// KlineProvider abstracts the source of historical kline data.
+// KlineProvider 抽象历史 K 线数据的来源。
 type KlineProvider interface {
 	GetHistoricalKlines(symbol, interval string, start, end time.Time) ([]binance.Kline, error)
 }
 
-// ResultStore abstracts persistence of backtest results.
+// ResultStore 抽象回测结果的持久化存储。
 type ResultStore interface {
 	Create(result *model.BacktestResult) error
 	GetByStrategy(strategyName string) ([]model.BacktestResult, error)
 }
 
-// Backtester runs strategy backtests against historical data.
+// Backtester 对历史数据运行策略回测。
 type Backtester struct {
 	klineProvider KlineProvider
 	store         ResultStore
 }
 
-// NewBacktester creates a new Backtester.
+// NewBacktester 创建新的 Backtester。
 func NewBacktester(kp KlineProvider, store ResultStore) *Backtester {
 	return &Backtester{klineProvider: kp, store: store}
 }
 
-// ApplySlippage adjusts a signal price by the slippage percentage.
-// Buy orders get a higher price, sell orders get a lower price.
+// ApplySlippage 根据滑点百分比调整信号价格。
+// 买入订单获得更高的价格，卖出订单获得更低的价格。
 func ApplySlippage(signalPrice, slippage decimal.Decimal, side string) decimal.Decimal {
 	adj := signalPrice.Mul(slippage)
 	if side == "BUY" {
@@ -87,12 +87,12 @@ func ApplySlippage(signalPrice, slippage decimal.Decimal, side string) decimal.D
 	return signalPrice.Sub(adj)
 }
 
-// CalculateFee computes the fee for a trade given amount and fee rate.
+// CalculateFee 根据交易金额和费率计算手续费。
 func CalculateFee(amount, feeRate decimal.Decimal) decimal.Decimal {
 	return amount.Mul(feeRate)
 }
 
-// Run executes a backtest with the given configuration.
+// Run 使用给定配置执行回测。
 func (b *Backtester) Run(cfg BacktestConfig) (*BacktestResult, error) {
 	if cfg.Strategy == nil {
 		return nil, fmt.Errorf("strategy is required")
@@ -112,18 +112,18 @@ func (b *Backtester) Run(cfg BacktestConfig) (*BacktestResult, error) {
 	return b.simulate(cfg, klines), nil
 }
 
-// simulate runs the strategy against klines and produces a BacktestResult.
+// simulate 对 K 线数据运行策略并生成 BacktestResult。
 func (b *Backtester) simulate(cfg BacktestConfig, klines []binance.Kline) *BacktestResult {
 	equity := cfg.InitialCap
 	peakEquity := equity
 	maxDrawdown := decimal.Zero
 	var trades []BacktestTrade
 	var equityCurve []EquityPoint
-	var position *openPosition // current open position
+	var position *openPosition // 当前持仓
 
 	equityCurve = append(equityCurve, EquityPoint{Timestamp: klines[0].OpenTime, Equity: equity})
 
-	// Slide a window over klines and evaluate strategy at each step
+	// 在 K 线上滑动窗口，在每一步评估策略
 	for i := 1; i < len(klines); i++ {
 		window := klines[:i+1]
 		signal := cfg.Strategy.Calculate(window)
@@ -139,7 +139,7 @@ func (b *Backtester) simulate(cfg BacktestConfig, klines []binance.Kline) *Backt
 		execPrice := ApplySlippage(signalPrice, cfg.Slippage, side)
 		qty := signal.Quantity
 		if qty.IsZero() {
-			// Default: use 10% of equity
+			// 默认：使用权益的 10%
 			qty = equity.Mul(decimal.NewFromFloat(0.1)).Div(execPrice)
 		}
 
@@ -147,9 +147,9 @@ func (b *Backtester) simulate(cfg BacktestConfig, klines []binance.Kline) *Backt
 		fee := CalculateFee(amount, cfg.FeeRate.Taker)
 
 		if side == "BUY" && position == nil {
-			// Open position
+			// 开仓
 			if equity.LessThan(amount.Add(fee)) {
-				continue // not enough capital
+				continue // 资金不足
 			}
 			equity = equity.Sub(amount).Sub(fee)
 			position = &openPosition{
@@ -167,7 +167,7 @@ func (b *Backtester) simulate(cfg BacktestConfig, klines []binance.Kline) *Backt
 				Fee:         fee,
 			})
 		} else if side == "SELL" && position != nil {
-			// Close position
+			// 平仓
 			sellAmount := execPrice.Mul(position.quantity)
 			sellFee := CalculateFee(sellAmount, cfg.FeeRate.Taker)
 			buyAmount := position.entryPrice.Mul(position.quantity)
@@ -187,7 +187,7 @@ func (b *Backtester) simulate(cfg BacktestConfig, klines []binance.Kline) *Backt
 			position = nil
 		}
 
-		// Update equity curve and drawdown
+		// 更新权益曲线和回撤
 		if equity.GreaterThan(peakEquity) {
 			peakEquity = equity
 		}
@@ -222,7 +222,7 @@ func (b *Backtester) buildResult(cfg BacktestConfig, trades []BacktestTrade, cur
 			sellCount++
 			if t.PnL.GreaterThan(decimal.Zero) {
 				wins++
-				grossProfit = grossProfit.Add(t.PnL.Add(t.Fee).Add(trades[sellCount*2-2].Fee)) // approximate gross
+				grossProfit = grossProfit.Add(t.PnL.Add(t.Fee).Add(trades[sellCount*2-2].Fee)) // 近似毛利润
 			} else {
 				grossLoss = grossLoss.Add(t.PnL.Abs())
 			}
@@ -230,7 +230,7 @@ func (b *Backtester) buildResult(cfg BacktestConfig, trades []BacktestTrade, cur
 	}
 
 	netProfit := finalEquity.Sub(cfg.InitialCap)
-	grossProfitTotal := netProfit.Add(totalFees) // gross = net + fees
+	grossProfitTotal := netProfit.Add(totalFees) // 毛利润 = 净利润 + 手续费
 
 	totalReturn := decimal.Zero
 	if cfg.InitialCap.GreaterThan(decimal.Zero) {
@@ -261,7 +261,7 @@ func (b *Backtester) buildResult(cfg BacktestConfig, trades []BacktestTrade, cur
 	}
 }
 
-// BatchRun runs multiple backtest configurations and returns all results.
+// BatchRun 运行多个回测配置并返回所有结果。
 func (b *Backtester) BatchRun(configs []BacktestConfig) ([]*BacktestResult, error) {
 	results := make([]*BacktestResult, 0, len(configs))
 	for _, cfg := range configs {
@@ -274,7 +274,7 @@ func (b *Backtester) BatchRun(configs []BacktestConfig) ([]*BacktestResult, erro
 	return results, nil
 }
 
-// SaveResult persists a backtest result to the store.
+// SaveResult 将回测结果持久化到存储中。
 func (b *Backtester) SaveResult(cfg BacktestConfig, result *BacktestResult) error {
 	if b.store == nil {
 		return nil
@@ -305,7 +305,7 @@ func (b *Backtester) SaveResult(cfg BacktestConfig, result *BacktestResult) erro
 	return b.store.Create(record)
 }
 
-// GetResults retrieves historical backtest results for a strategy.
+// GetResults 获取指定策略的历史回测结果。
 func (b *Backtester) GetResults(strategyName string) ([]model.BacktestResult, error) {
 	if b.store == nil {
 		return nil, nil

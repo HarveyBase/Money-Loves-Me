@@ -12,7 +12,7 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// helper to build a standard BTCUSDT symbol with typical Binance filters.
+// 辅助函数，构建一个具有典型 Binance 过滤器的标准 BTCUSDT 交易对。
 func testExchangeInfo() *binance.ExchangeInfo {
 	return &binance.ExchangeInfo{
 		Symbols: []binance.SymbolInfo{
@@ -82,7 +82,7 @@ func TestValidate_QuantityBelowMin(t *testing.T) {
 		Symbol:   "BTCUSDT",
 		Side:     "BUY",
 		Type:     "LIMIT",
-		Quantity: decimal.NewFromFloat(0.000001), // below 0.00001
+		Quantity: decimal.NewFromFloat(0.000001), // 低于 0.00001
 		Price:    decimal.NewFromFloat(50000.00),
 	})
 	require.Error(t, err)
@@ -97,7 +97,7 @@ func TestValidate_QuantityAboveMax(t *testing.T) {
 		Symbol:   "BTCUSDT",
 		Side:     "BUY",
 		Type:     "LIMIT",
-		Quantity: decimal.NewFromFloat(10000), // above 9000
+		Quantity: decimal.NewFromFloat(10000), // 超过 9000
 		Price:    decimal.NewFromFloat(50000.00),
 	})
 	require.Error(t, err)
@@ -108,7 +108,7 @@ func TestValidate_QuantityAboveMax(t *testing.T) {
 
 func TestValidate_QuantityStepSize(t *testing.T) {
 	v := newValidator()
-	// 0.000015 - 0.00001 = 0.000005, which is not a multiple of 0.00001
+	// 0.000015 - 0.00001 = 0.000005，不是 0.00001 的倍数
 	err := v.Validate(binance.CreateOrderRequest{
 		Symbol:   "BTCUSDT",
 		Side:     "BUY",
@@ -129,7 +129,7 @@ func TestValidate_PriceBelowMin(t *testing.T) {
 		Side:     "BUY",
 		Type:     "LIMIT",
 		Quantity: decimal.NewFromFloat(1),
-		Price:    decimal.NewFromFloat(0.001), // below 0.01
+		Price:    decimal.NewFromFloat(0.001), // 低于 0.01
 	})
 	require.Error(t, err)
 	var appErr *apperrors.AppError
@@ -144,7 +144,7 @@ func TestValidate_PriceAboveMax(t *testing.T) {
 		Side:     "BUY",
 		Type:     "LIMIT",
 		Quantity: decimal.NewFromFloat(0.001),
-		Price:    decimal.NewFromFloat(2000000), // above 1000000
+		Price:    decimal.NewFromFloat(2000000), // 超过 1000000
 	})
 	require.Error(t, err)
 	var appErr *apperrors.AppError
@@ -159,7 +159,7 @@ func TestValidate_PriceTickSize(t *testing.T) {
 		Side:     "BUY",
 		Type:     "LIMIT",
 		Quantity: decimal.NewFromFloat(0.001),
-		Price:    decimal.RequireFromString("50000.005"), // not a multiple of 0.01
+		Price:    decimal.RequireFromString("50000.005"), // 不是 0.01 的倍数
 	})
 	require.Error(t, err)
 	var appErr *apperrors.AppError
@@ -169,7 +169,7 @@ func TestValidate_PriceTickSize(t *testing.T) {
 
 func TestValidate_NotionalBelowMin(t *testing.T) {
 	v := newValidator()
-	// 0.00001 * 100 = 0.001 USDT, below 10 USDT
+	// 0.00001 * 100 = 0.001 USDT，低于 10 USDT
 	err := v.Validate(binance.CreateOrderRequest{
 		Symbol:   "BTCUSDT",
 		Side:     "BUY",
@@ -185,7 +185,7 @@ func TestValidate_NotionalBelowMin(t *testing.T) {
 
 func TestValidate_MultipleErrors(t *testing.T) {
 	v := newValidator()
-	// quantity below min AND notional below min
+	// 数量低于最小值 且 名义价值低于最小值
 	err := v.Validate(binance.CreateOrderRequest{
 		Symbol:   "BTCUSDT",
 		Side:     "BUY",
@@ -196,7 +196,7 @@ func TestValidate_MultipleErrors(t *testing.T) {
 	require.Error(t, err)
 	var appErr *apperrors.AppError
 	require.ErrorAs(t, err, &appErr)
-	// Should contain both quantity and notional errors
+	// 应同时包含数量和名义价值的错误
 	var ve *ValidationError
 	require.ErrorAs(t, appErr.Cause, &ve)
 	assert.GreaterOrEqual(t, len(ve.Errors), 2)
@@ -218,7 +218,7 @@ func TestMapExchangeInfoProvider_FromExchangeInfo(t *testing.T) {
 // **Validates: Requirements 3.2**
 
 func TestProperty4_OrderParameterValidation(t *testing.T) {
-	// BTCUSDT rules from testExchangeInfo():
+	// testExchangeInfo() 中的 BTCUSDT 规则：
 	//   LOT_SIZE:     min=0.00001, max=9000, step=0.00001
 	//   PRICE_FILTER: min=0.01, max=1000000, tick=0.01
 	//   MIN_NOTIONAL: min=10
@@ -235,27 +235,27 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate quantity as integer multiples of stepSize within [minQty, maxQty].
-			// minQty = 0.00001 = 1 step, maxQty = 9000 = 900000000 steps
+			// 生成数量为 stepSize 的整数倍，范围在 [minQty, maxQty] 内。
+			// minQty = 0.00001 = 1 步, maxQty = 9000 = 900000000 步
 			qtySteps := rapid.Int64Range(1, 900000000).Draw(t, "qtySteps")
 			qty := stepSize.Mul(decimal.NewFromInt(qtySteps))
 
-			// We need price * qty >= minNotional (10) and price in [minPrice, maxPrice].
-			// Compute minimum price ticks to satisfy notional: ceil(minNotional / qty / tickSize)
+			// 需要 price * qty >= minNotional (10) 且 price 在 [minPrice, maxPrice] 范围内。
+			// 计算满足名义价值的最小价格刻度数：ceil(minNotional / qty / tickSize)
 			minTicksForNotional := minNotional.Div(qty).Div(tickSize).Ceil().IntPart()
 			if minTicksForNotional < 1 {
 				minTicksForNotional = 1
 			}
 			maxTicks := maxPrice.Div(tickSize).IntPart() // 1000000 / 0.01 = 100000000
 			if minTicksForNotional > maxTicks {
-				// Skip: impossible to satisfy notional with this qty within price range
+				// 跳过：在价格范围内无法满足名义价值约束
 				t.Skip("cannot satisfy notional constraint")
 			}
 
 			priceTicks := rapid.Int64Range(minTicksForNotional, maxTicks).Draw(t, "priceTicks")
 			price := tickSize.Mul(decimal.NewFromInt(priceTicks))
 
-			// Sanity: verify our generated values meet all constraints
+			// 健全性检查：验证生成的值满足所有约束
 			require.True(t, qty.GreaterThanOrEqual(minQty))
 			require.True(t, qty.LessThanOrEqual(maxQty))
 			require.True(t, price.GreaterThanOrEqual(minPrice))
@@ -277,9 +277,9 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate a quantity that is below minQty but still positive.
-			// minQty = 0.00001 = 1e-5, so generate fractions of it.
-			// Use a divisor > 1 to ensure qty < minQty.
+			// 生成低于 minQty 但仍为正数的数量。
+			// minQty = 0.00001 = 1e-5，因此生成其分数。
+			// 使用大于 1 的除数确保 qty < minQty。
 			divisor := rapid.Int64Range(2, 100).Draw(t, "divisor")
 			qty := minQty.Div(decimal.NewFromInt(divisor))
 
@@ -303,8 +303,8 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate quantity above maxQty, aligned to step.
-			// maxQty = 9000 = 900000000 steps. Generate steps above that.
+			// 生成超过 maxQty 且对齐步长的数量。
+			// maxQty = 9000 = 900000000 步。生成超过该值的步数。
 			extraSteps := rapid.Int64Range(1, 1000000).Draw(t, "extraSteps")
 			qty := maxQty.Add(stepSize.Mul(decimal.NewFromInt(extraSteps)))
 
@@ -328,12 +328,12 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate a valid base quantity, then add a fractional offset that breaks step alignment.
-			// stepSize = 0.00001. Add half a step to break alignment.
+			// 生成一个有效的基础数量，然后添加一个破坏步长对齐的小数偏移。
+			// stepSize = 0.00001。添加半个步长来破坏对齐。
 			baseSteps := rapid.Int64Range(1, 100000).Draw(t, "baseSteps")
 			qty := stepSize.Mul(decimal.NewFromInt(baseSteps)).Add(decimal.RequireFromString("0.000005"))
 
-			// Use a high price so notional is satisfied
+			// 使用较高的价格以满足名义价值要求
 			price := decimal.NewFromFloat(50000.00)
 
 			err := v.Validate(binance.CreateOrderRequest{
@@ -354,7 +354,7 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate a price below minPrice (0.01).
+			// 生成低于 minPrice (0.01) 的价格。
 			divisor := rapid.Int64Range(2, 100).Draw(t, "divisor")
 			price := minPrice.Div(decimal.NewFromInt(divisor))
 
@@ -378,7 +378,7 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate price above maxPrice, aligned to tick.
+			// 生成超过 maxPrice 且对齐刻度的价格。
 			extraTicks := rapid.Int64Range(1, 1000000).Draw(t, "extraTicks")
 			price := maxPrice.Add(tickSize.Mul(decimal.NewFromInt(extraTicks)))
 
@@ -402,8 +402,8 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate a valid base price, then add half a tick to break alignment.
-			// tickSize = 0.01. Add 0.005 to break alignment.
+			// 生成一个有效的基础价格，然后添加半个刻度来破坏对齐。
+			// tickSize = 0.01。添加 0.005 来破坏对齐。
 			baseTicks := rapid.Int64Range(1, 100000).Draw(t, "baseTicks")
 			price := tickSize.Mul(decimal.NewFromInt(baseTicks)).Add(decimal.RequireFromString("0.005"))
 
@@ -427,14 +427,14 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 		rapid.Check(t, func(t *rapid.T) {
 			v := newValidator()
 
-			// Generate valid qty and price individually, but ensure notional < minNotional (10).
-			// Use small qty and small price so price*qty < 10.
-			// qty in [minQty, 0.001] (step-aligned), price in [minPrice, some low value] (tick-aligned)
-			qtySteps := rapid.Int64Range(1, 100).Draw(t, "qtySteps") // max 0.001
+			// 生成单独有效的 qty 和 price，但确保 notional < minNotional (10)。
+			// 使用较小的 qty 和较小的 price 使得 price*qty < 10。
+			// qty 在 [minQty, 0.001]（步长对齐），price 在 [minPrice, 某个较低值]（刻度对齐）
+			qtySteps := rapid.Int64Range(1, 100).Draw(t, "qtySteps") // 最大 0.001
 			qty := stepSize.Mul(decimal.NewFromInt(qtySteps))
 
-			// We need price * qty < 10. So price < 10 / qty.
-			maxPriceForLowNotional := minNotional.Div(qty).Sub(tickSize) // ensure strictly below
+			// 需要 price * qty < 10。所以 price < 10 / qty。
+			maxPriceForLowNotional := minNotional.Div(qty).Sub(tickSize) // 确保严格低于
 			if maxPriceForLowNotional.LessThan(minPrice) {
 				t.Skip("cannot generate low notional with this qty")
 			}
@@ -445,7 +445,7 @@ func TestProperty4_OrderParameterValidation(t *testing.T) {
 			priceTicks := rapid.Int64Range(1, maxPriceTicks).Draw(t, "priceTicks")
 			price := tickSize.Mul(decimal.NewFromInt(priceTicks))
 
-			// Verify notional is indeed below min
+			// 验证名义价值确实低于最小值
 			notional := price.Mul(qty)
 			require.True(t, notional.LessThan(minNotional), "notional %s should be < %s", notional, minNotional)
 

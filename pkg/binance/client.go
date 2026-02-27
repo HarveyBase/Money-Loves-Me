@@ -3,24 +3,23 @@ package binance
 import (
 	"fmt"
 	"io"
+	apperrors "money-loves-me/internal/errors"
 	"net/http"
 	"net/url"
 	"strconv"
 	"sync"
 	"time"
-
-	apperrors "money-loves-me/internal/errors"
 )
 
 const (
 	defaultBaseURL = "https://api.binance.com"
 	defaultWsURL   = "wss://stream.binance.com:9443"
 
-	// Rate limit: 1200 requests per minute = 20 per second.
+	// 速率限制：每分钟 1200 个请求 = 每秒 20 个。
 	rateLimitPerSec = 20
 )
 
-// BinanceClient is the main entry point for interacting with the Binance API.
+// BinanceClient 是与 Binance API 交互的主入口。
 type BinanceClient struct {
 	apiKey     string
 	secretKey  string
@@ -31,7 +30,7 @@ type BinanceClient struct {
 	limiter    *rateLimiter
 }
 
-// rateLimiter implements a simple token-bucket style rate limiter.
+// rateLimiter 实现了一个简单的令牌桶式速率限制器。
 type rateLimiter struct {
 	mu     sync.Mutex
 	tokens int
@@ -65,7 +64,7 @@ func (rl *rateLimiter) refill() {
 	}
 }
 
-// Wait blocks until a token is available.
+// Wait 阻塞直到有可用的令牌。
 func (rl *rateLimiter) Wait() {
 	for {
 		rl.mu.Lock()
@@ -79,30 +78,30 @@ func (rl *rateLimiter) Wait() {
 	}
 }
 
-// Stop shuts down the rate limiter goroutine.
+// Stop 关闭速率限制器的 goroutine。
 func (rl *rateLimiter) Stop() {
 	close(rl.stopCh)
 }
 
-// ClientOption allows customising the BinanceClient.
+// ClientOption 允许自定义 BinanceClient。
 type ClientOption func(*BinanceClient)
 
-// WithBaseURL overrides the default REST base URL.
+// WithBaseURL 覆盖默认的 REST 基础 URL。
 func WithBaseURL(u string) ClientOption {
 	return func(c *BinanceClient) { c.baseURL = u }
 }
 
-// WithWsURL overrides the default WebSocket URL.
+// WithWsURL 覆盖默认的 WebSocket URL。
 func WithWsURL(u string) ClientOption {
 	return func(c *BinanceClient) { c.wsURL = u }
 }
 
-// WithHTTPClient overrides the default HTTP client.
+// WithHTTPClient 覆盖默认的 HTTP 客户端。
 func WithHTTPClient(hc *http.Client) ClientOption {
 	return func(c *BinanceClient) { c.httpClient = hc }
 }
 
-// NewBinanceClient creates a new BinanceClient with the given credentials.
+// NewBinanceClient 使用给定的凭证创建一个新的 BinanceClient。
 func NewBinanceClient(apiKey, secretKey string, opts ...ClientOption) *BinanceClient {
 	c := &BinanceClient{
 		apiKey:     apiKey,
@@ -119,12 +118,12 @@ func NewBinanceClient(apiKey, secretKey string, opts ...ClientOption) *BinanceCl
 	return c
 }
 
-// Close releases resources held by the client.
+// Close 释放客户端持有的资源。
 func (c *BinanceClient) Close() {
 	c.limiter.Stop()
 }
 
-// doPublicRequest performs an unauthenticated GET request.
+// doPublicRequest 执行一个未认证的 GET 请求。
 func (c *BinanceClient) doPublicRequest(path string, params url.Values) ([]byte, error) {
 	c.limiter.Wait()
 
@@ -155,7 +154,7 @@ func (c *BinanceClient) doPublicRequest(path string, params url.Values) ([]byte,
 	return body, nil
 }
 
-// doSignedRequest performs an authenticated request with HMAC-SHA256 signature.
+// doSignedRequest 执行一个带有 HMAC-SHA256 签名的认证请求。
 func (c *BinanceClient) doSignedRequest(method, path string, params url.Values) ([]byte, error) {
 	c.limiter.Wait()
 

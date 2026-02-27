@@ -6,24 +6,24 @@ import (
 	"gorm.io/gorm"
 )
 
-// BacktestStore handles CRUD operations for backtest results.
+// BacktestStore 处理回测结果的 CRUD 操作。
 type BacktestStore struct {
 	*Store
 }
 
-// NewBacktestStore creates a new BacktestStore.
+// NewBacktestStore 创建一个新的 BacktestStore。
 func NewBacktestStore(db *gorm.DB) *BacktestStore {
 	return &BacktestStore{Store: NewStore(db)}
 }
 
-// Create inserts a new backtest result record.
+// Create 插入一条新的回测结果记录。
 func (s *BacktestStore) Create(result *model.BacktestResult) error {
 	return s.withRetry(func() error {
 		return s.db.Create(result).Error
 	})
 }
 
-// GetByID retrieves a backtest result by its primary key.
+// GetByID 根据主键获取回测结果。
 func (s *BacktestStore) GetByID(id int64) (*model.BacktestResult, error) {
 	var result model.BacktestResult
 	err := s.withRetry(func() error {
@@ -35,8 +35,8 @@ func (s *BacktestStore) GetByID(id int64) (*model.BacktestResult, error) {
 	return &result, nil
 }
 
-// GetByStrategy retrieves all backtest results for a given strategy name,
-// ordered by creation time descending.
+// GetByStrategy 获取指定策略名称的所有回测结果，
+// 按创建时间降序排列。
 func (s *BacktestStore) GetByStrategy(strategyName string) ([]model.BacktestResult, error) {
 	var results []model.BacktestResult
 	err := s.withRetry(func() error {

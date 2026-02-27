@@ -13,7 +13,7 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// generateKlines creates n klines starting from a base price with small increments.
+// generateKlines 从基础价格开始创建 n 根 K 线，价格逐步递增。
 func generateKlines(n int, basePrice decimal.Decimal) []binance.Kline {
 	klines := make([]binance.Kline, n)
 	for i := 0; i < n; i++ {
@@ -32,8 +32,8 @@ func generateKlines(n int, basePrice decimal.Decimal) []binance.Kline {
 }
 
 // Feature: binance-trading-system, Property 7: 策略自动初始化有效默认参数
-// For any built-in strategy, GetParams() should return a valid default parameter set
-// where all parameter values are positive.
+// 对于任何内置策略，GetParams() 应返回有效的默认参数集，
+// 其中所有参数值均为正数。
 // **Validates: Requirements 4.2**
 func TestProperty7_StrategyDefaultParamsAreValid(t *testing.T) {
 	builtInFactories := []func() Strategy{
@@ -43,28 +43,28 @@ func TestProperty7_StrategyDefaultParamsAreValid(t *testing.T) {
 	}
 
 	rapid.Check(t, func(t *rapid.T) {
-		// Pick a random built-in strategy
+		// 随机选择一个内置策略
 		idx := rapid.IntRange(0, len(builtInFactories)-1).Draw(t, "strategyIndex")
 		strategy := builtInFactories[idx]()
 
 		params := strategy.GetParams()
 
-		// All parameters must be present (non-empty map)
+		// 所有参数必须存在（非空映射）
 		assert.NotEmpty(t, params, "strategy %s should have default parameters", strategy.Name())
 
-		// All parameter values must be positive
+		// 所有参数值必须为正数
 		for name, value := range params {
 			assert.True(t, value.GreaterThan(decimal.Zero),
 				"strategy %s parameter %s should be positive, got %s", strategy.Name(), name, value.String())
 		}
 
-		// Verify SetParams accepts the default params (they should be valid)
+		// 验证 SetParams 接受默认参数（它们应该是有效的）
 		err := strategy.SetParams(params)
 		assert.NoError(t, err, "strategy %s should accept its own default params", strategy.Name())
 	})
 }
 
-// --- Unit tests for StrategyEngine core logic ---
+// --- 策略引擎核心逻辑的单元测试 ---
 
 func TestStrategyEngine_StartStop(t *testing.T) {
 	engine := NewStrategyEngine(
@@ -73,24 +73,24 @@ func TestStrategyEngine_StartStop(t *testing.T) {
 		FeeRate{Maker: decimal.NewFromFloat(0.001), Taker: decimal.NewFromFloat(0.001)},
 	)
 
-	// Should not be running initially
+	// 初始状态不应该在运行
 	assert.False(t, engine.IsRunning())
 
-	// Start
+	// 启动
 	err := engine.Start(context.Background())
 	assert.NoError(t, err)
 	assert.True(t, engine.IsRunning())
 
-	// Double start should error
+	// 重复启动应该报错
 	err = engine.Start(context.Background())
 	assert.Error(t, err)
 
-	// Stop
+	// 停止
 	err = engine.Stop()
 	assert.NoError(t, err)
 	assert.False(t, engine.IsRunning())
 
-	// Double stop should error
+	// 重复停止应该报错
 	err = engine.Stop()
 	assert.Error(t, err)
 }
@@ -102,7 +102,7 @@ func TestStrategyEngine_EvaluateMarket_NotRunning(t *testing.T) {
 		FeeRate{Maker: decimal.NewFromFloat(0.001), Taker: decimal.NewFromFloat(0.001)},
 	)
 
-	// Should return nil when not running
+	// 未运行时应返回 nil
 	signals := engine.EvaluateMarket("BTCUSDT", nil)
 	assert.Nil(t, signals)
 }
@@ -118,12 +118,12 @@ func TestStrategyEngine_StrategyLogs(t *testing.T) {
 	assert.NoError(t, err)
 	defer engine.Stop()
 
-	// Evaluate with insufficient data - should log but no signals
+	// 使用不足的数据进行评估 - 应记录日志但无信号
 	klines := generateKlines(5, decimal.NewFromFloat(100))
 	signals := engine.EvaluateMarket("BTCUSDT", klines)
 	assert.Empty(t, signals)
 
-	// Check that logs were created
+	// 检查日志是否已创建
 	logs := engine.GetStrategyLogs(MACrossName)
 	assert.NotEmpty(t, logs)
 	assert.Equal(t, MACrossName, logs[0].StrategyName)
@@ -131,16 +131,16 @@ func TestStrategyEngine_StrategyLogs(t *testing.T) {
 }
 
 // Feature: binance-trading-system, Property 8: 停止交易后不产生新信号
-// After calling Stop(), no matter how many market data updates are received,
-// no new trading signals should be generated.
+// 调用 Stop() 后，无论收到多少市场数据更新，
+// 都不应生成新的交易信号。
 // **Validates: Requirements 4.6**
 func TestProperty8_NoSignalsAfterStop(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate random number of market updates to send after stop
+		// 生成停止后要发送的随机市场更新数量
 		numUpdates := rapid.IntRange(1, 50).Draw(t, "numUpdates")
 		numKlines := rapid.IntRange(30, 100).Draw(t, "numKlines")
 
-		// Track signals received
+		// 跟踪接收到的信号
 		var signalsMu sync.Mutex
 		var receivedSignals []Signal
 
@@ -157,7 +157,7 @@ func TestProperty8_NoSignalsAfterStop(t *testing.T) {
 			FeeRate{Maker: decimal.NewFromFloat(0.001), Taker: decimal.NewFromFloat(0.001)},
 		)
 
-		// Start and then immediately stop
+		// 启动后立即停止
 		err := engine.Start(context.Background())
 		assert.NoError(t, err)
 
@@ -165,7 +165,7 @@ func TestProperty8_NoSignalsAfterStop(t *testing.T) {
 		assert.NoError(t, err)
 		assert.False(t, engine.IsRunning())
 
-		// Now send many market data updates - no signals should be generated
+		// 现在发送大量市场数据更新 - 不应生成任何信号
 		for i := 0; i < numUpdates; i++ {
 			basePrice := decimal.NewFromFloat(100).Add(decimal.NewFromInt(int64(i)))
 			klines := generateKlines(numKlines, basePrice)
@@ -173,7 +173,7 @@ func TestProperty8_NoSignalsAfterStop(t *testing.T) {
 			assert.Empty(t, signals, "no signals should be generated after Stop()")
 		}
 
-		// Also verify ProcessSignals produces nothing
+		// 同时验证 ProcessSignals 也不产生任何输出
 		klines := generateKlines(numKlines, decimal.NewFromFloat(200))
 		err = engine.ProcessSignals("BTCUSDT", klines)
 		assert.NoError(t, err)
@@ -184,7 +184,7 @@ func TestProperty8_NoSignalsAfterStop(t *testing.T) {
 	})
 }
 
-// mockStrategy is a test strategy that always generates a signal with configurable parameters.
+// mockStrategy 是一个测试策略，始终生成具有可配置参数的信号。
 type mockStrategy struct {
 	name   string
 	signal *Signal
@@ -197,7 +197,7 @@ func (m *mockStrategy) Calculate(klines []binance.Kline) *Signal {
 	if m.signal == nil {
 		return nil
 	}
-	// Return a copy
+	// 返回副本
 	s := *m.signal
 	return &s
 }
@@ -214,31 +214,31 @@ func (m *mockStrategy) EstimateFee(price, quantity, feeRate decimal.Decimal) dec
 }
 
 // Feature: binance-trading-system, Property 9: 手续费感知的信号生成
-// For any trading signal, the expected profit after deducting fees must be positive;
-// otherwise the signal should not be generated.
+// 对于任何交易信号，扣除手续费后的预期利润必须为正；
+// 否则不应生成该信号。
 // **Validates: Requirements 4.8**
 func TestProperty9_FeeAwareSignalGeneration(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate random price, quantity, expected profit, and fee rate
+		// 生成随机价格、数量、预期利润和费率
 		price := decimal.NewFromFloat(rapid.Float64Range(10, 100000).Draw(t, "price"))
 		quantity := decimal.NewFromFloat(rapid.Float64Range(0.001, 100).Draw(t, "quantity"))
 		feeRateFloat := rapid.Float64Range(0.0001, 0.01).Draw(t, "feeRate")
 		feeRate := decimal.NewFromFloat(feeRateFloat)
 
-		// Calculate the fee for this trade
+		// 计算此交易的手续费
 		fee := price.Mul(quantity).Mul(feeRate)
 
-		// Randomly decide if the expected profit should be above or below the fee
+		// 随机决定预期利润是否应高于手续费
 		profitAboveFee := rapid.Bool().Draw(t, "profitAboveFee")
 
 		var expectedProfit decimal.Decimal
 		if profitAboveFee {
-			// Expected profit > fee → signal should pass
+			// 预期利润 > 手续费 → 信号应通过
 			margin := decimal.NewFromFloat(rapid.Float64Range(0.01, 100).Draw(t, "margin"))
 			expectedProfit = fee.Add(margin)
 		} else {
-			// Expected profit <= fee → signal should be rejected
-			// Generate a profit that is between 0 and fee (inclusive of fee)
+			// 预期利润 <= 手续费 → 信号应被拒绝
+			// 生成介于 0 和手续费之间的利润（包含手续费）
 			ratio := decimal.NewFromFloat(rapid.Float64Range(0, 1).Draw(t, "ratio"))
 			expectedProfit = fee.Mul(ratio)
 		}
@@ -278,17 +278,17 @@ func TestProperty9_FeeAwareSignalGeneration(t *testing.T) {
 		signals := engine.EvaluateMarket("BTCUSDT", klines)
 
 		if profitAboveFee {
-			// Signal should be generated (expected profit > fee)
+			// 信号应被生成（预期利润 > 手续费）
 			assert.Len(t, signals, 1, "signal should be generated when expected profit > fee")
 			if len(signals) > 0 {
-				// Verify the signal's expected profit exceeds the fee
+				// 验证信号的预期利润超过手续费
 				actualFee := mock.EstimateFee(signals[0].Price, signals[0].Quantity, feeRate)
 				assert.True(t, signals[0].ExpectedProfit.GreaterThan(actualFee),
 					"expected profit (%s) should exceed fee (%s)",
 					signals[0].ExpectedProfit.String(), actualFee.String())
 			}
 		} else {
-			// Signal should NOT be generated (expected profit <= fee)
+			// 信号不应被生成（预期利润 <= 手续费）
 			assert.Empty(t, signals, "signal should not be generated when expected profit <= fee")
 		}
 	})

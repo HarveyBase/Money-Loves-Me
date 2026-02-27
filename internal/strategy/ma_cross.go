@@ -15,15 +15,15 @@ const (
 	MACrossParamLongPeriod  = "long_period"
 )
 
-// MACrossStrategy implements a moving average crossover strategy.
-// A BUY signal is generated when the short MA crosses above the long MA.
-// A SELL signal is generated when the short MA crosses below the long MA.
+// MACrossStrategy 实现了移动平均线交叉策略。
+// 当短期均线上穿长期均线时生成买入信号。
+// 当短期均线下穿长期均线时生成卖出信号。
 type MACrossStrategy struct {
 	shortPeriod int
 	longPeriod  int
 }
 
-// NewMACrossStrategy creates a new MA Cross strategy with default parameters.
+// NewMACrossStrategy 使用默认参数创建新的 MA 交叉策略。
 func NewMACrossStrategy() *MACrossStrategy {
 	return &MACrossStrategy{
 		shortPeriod: 7,
@@ -31,23 +31,23 @@ func NewMACrossStrategy() *MACrossStrategy {
 	}
 }
 
-// Name returns the strategy name.
+// Name 返回策略名称。
 func (s *MACrossStrategy) Name() string {
 	return MACrossName
 }
 
-// Calculate analyzes klines and returns a BUY/SELL signal based on MA crossover.
-// Returns nil if there is insufficient data or no crossover detected.
+// Calculate 分析 K 线数据并根据 MA 交叉返回买入/卖出信号。
+// 如果数据不足或未检测到交叉则返回 nil。
 func (s *MACrossStrategy) Calculate(klines []binance.Kline) *Signal {
 	if len(klines) < s.longPeriod+1 {
 		return nil
 	}
 
-	// We need at least longPeriod+1 klines to detect a crossover
-	// (current bar and previous bar MAs).
+	// 需要至少 longPeriod+1 根 K 线来检测交叉
+	// （当前 K 线和前一根 K 线的均线值）。
 	n := len(klines)
 
-	// Calculate short and long MAs for the current and previous bars.
+	// 计算当前和前一根 K 线的短期和长期均线。
 	shortMACurr := calcSMA(klines[n-s.shortPeriod : n])
 	shortMAPrev := calcSMA(klines[n-1-s.shortPeriod : n-1])
 	longMACurr := calcSMA(klines[n-s.longPeriod : n])
@@ -55,7 +55,7 @@ func (s *MACrossStrategy) Calculate(klines []binance.Kline) *Signal {
 
 	lastKline := klines[n-1]
 
-	// Golden cross: short MA crosses above long MA → BUY
+	// 金叉：短期均线上穿长期均线 → 买入
 	if shortMAPrev.LessThanOrEqual(longMAPrev) && shortMACurr.GreaterThan(longMACurr) {
 		return &Signal{
 			Strategy:  s.Name(),
@@ -75,7 +75,7 @@ func (s *MACrossStrategy) Calculate(klines []binance.Kline) *Signal {
 		}
 	}
 
-	// Death cross: short MA crosses below long MA → SELL
+	// 死叉：短期均线下穿长期均线 → 卖出
 	if shortMAPrev.GreaterThanOrEqual(longMAPrev) && shortMACurr.LessThan(longMACurr) {
 		return &Signal{
 			Strategy:  s.Name(),
@@ -98,7 +98,7 @@ func (s *MACrossStrategy) Calculate(klines []binance.Kline) *Signal {
 	return nil
 }
 
-// GetParams returns the current strategy parameters.
+// GetParams 返回当前策略参数。
 func (s *MACrossStrategy) GetParams() StrategyParams {
 	return StrategyParams{
 		MACrossParamShortPeriod: decimal.NewFromInt(int64(s.shortPeriod)),
@@ -106,7 +106,7 @@ func (s *MACrossStrategy) GetParams() StrategyParams {
 	}
 }
 
-// SetParams updates the strategy parameters.
+// SetParams 更新策略参数。
 func (s *MACrossStrategy) SetParams(params StrategyParams) error {
 	sp, ok := params[MACrossParamShortPeriod]
 	if !ok {
@@ -135,12 +135,12 @@ func (s *MACrossStrategy) SetParams(params StrategyParams) error {
 	return nil
 }
 
-// EstimateFee estimates the trading fee for a given price, quantity, and fee rate.
+// EstimateFee 根据给定的价格、数量和费率估算交易手续费。
 func (s *MACrossStrategy) EstimateFee(price, quantity, feeRate decimal.Decimal) decimal.Decimal {
 	return price.Mul(quantity).Mul(feeRate)
 }
 
-// calcSMA calculates the simple moving average of the Close prices of the given klines.
+// calcSMA 计算给定 K 线收盘价的简单移动平均线。
 func calcSMA(klines []binance.Kline) decimal.Decimal {
 	if len(klines) == 0 {
 		return decimal.Zero

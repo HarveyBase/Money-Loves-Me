@@ -16,45 +16,45 @@ import (
 )
 
 const (
-	// cacheRefreshInterval is the interval for periodic balance cache refresh.
+	// cacheRefreshInterval 是定期刷新余额缓存的时间间隔。
 	cacheRefreshInterval = 5 * time.Second
 )
 
-// BalanceInfo holds the free and locked amounts for a single asset.
+// BalanceInfo 保存单个资产的可用和冻结金额。
 type BalanceInfo struct {
 	Free   decimal.Decimal
 	Locked decimal.Decimal
 }
 
-// PnL holds the profit and loss information for a trading pair.
+// PnL 保存交易对的盈亏信息。
 type PnL struct {
 	Symbol      string
-	RealizedPnL decimal.Decimal // realized profit/loss (sells - buys - fees)
-	TotalFees   decimal.Decimal // total fees paid
-	BuyAmount   decimal.Decimal // total buy cost
-	SellAmount  decimal.Decimal // total sell revenue
+	RealizedPnL decimal.Decimal // 已实现盈亏（卖出 - 买入 - 手续费）
+	TotalFees   decimal.Decimal // 已支付的总手续费
+	BuyAmount   decimal.Decimal // 总买入成本
+	SellAmount  decimal.Decimal // 总卖出收入
 	TradeCount  int
 }
 
-// FeeStatistics holds cumulative fee statistics.
+// FeeStatistics 保存累计手续费统计信息。
 type FeeStatistics struct {
-	TotalFees   decimal.Decimal            // total fees across all trades
-	FeeByAsset  map[string]decimal.Decimal // fees grouped by fee asset
-	FeeBySymbol map[string]decimal.Decimal // fees grouped by trading pair
+	TotalFees   decimal.Decimal            // 所有交易的总手续费
+	FeeByAsset  map[string]decimal.Decimal // 按手续费资产分组的手续费
+	FeeBySymbol map[string]decimal.Decimal // 按交易对分组的手续费
 	TradeCount  int
 }
 
-// MarketPricer provides current market prices for assets.
+// MarketPricer 提供资产的当前市场价格。
 type MarketPricer interface {
 	GetCurrentPrice(symbol string) (decimal.Decimal, error)
 }
 
-// BinanceAccountClient defines the subset of BinanceClient used by AccountService.
+// BinanceAccountClient 定义 AccountService 使用的 BinanceClient 子集。
 type BinanceAccountClient interface {
 	GetAccountInfo() (*binance.AccountInfo, error)
 }
 
-// AccountService manages account balances, asset valuation, PnL, and fee statistics.
+// AccountService 管理账户余额、资产估值、盈亏和手续费统计。
 type AccountService struct {
 	client       BinanceAccountClient
 	market       MarketPricer
@@ -63,13 +63,12 @@ type AccountService struct {
 	log          *logger.Logger
 
 	mu    sync.RWMutex
-	cache map[string]BalanceInfo // asset -> balance info
+	cache map[string]BalanceInfo // 资产 -> 余额信息
 
 	cancelRefresh context.CancelFunc
 }
 
-// NewAccountService creates a new AccountService and starts the background
-// cache refresh goroutine.
+// NewAccountService 创建一个新的 AccountService 并启动后台缓存刷新协程。
 func NewAccountService(
 	client BinanceAccountClient,
 	market MarketPricer,
@@ -91,14 +90,14 @@ func NewAccountService(
 	return s
 }
 
-// Close stops the background cache refresh goroutine.
+// Close 停止后台缓存刷新协程。
 func (s *AccountService) Close() {
 	s.cancelRefresh()
 }
 
-// refreshLoop periodically refreshes the balance cache from the Binance API.
+// refreshLoop 定期从 Binance API 刷新余额缓存。
 func (s *AccountService) refreshLoop(ctx context.Context) {
-	// Do an initial fetch immediately.
+	// 立即执行一次初始获取。
 	s.refreshCache()
 
 	ticker := time.NewTicker(cacheRefreshInterval)
@@ -114,7 +113,7 @@ func (s *AccountService) refreshLoop(ctx context.Context) {
 	}
 }
 
-// refreshCache fetches account info from Binance and updates the local cache.
+// refreshCache 从 Binance 获取账户信息并更新本地缓存。
 func (s *AccountService) refreshCache() {
 	info, err := s.client.GetAccountInfo()
 	if err != nil {
@@ -136,7 +135,7 @@ func (s *AccountService) refreshCache() {
 				zap.String("asset", b.Asset), zap.Error(err))
 			continue
 		}
-		// Only cache assets with non-zero balances.
+		// 仅缓存余额非零的资产。
 		if free.IsZero() && locked.IsZero() {
 			continue
 		}
@@ -150,8 +149,8 @@ func (s *AccountService) refreshCache() {
 	s.log.Debug("balance cache refreshed", zap.Int("assets", len(newCache)))
 }
 
-// GetBalances returns the current balances for all assets with non-zero amounts.
-// Each entry contains the free (available) and locked (frozen) amounts.
+// GetBalances 返回所有余额非零资产的当前余额。
+// 每个条目包含可用（free）和冻结（locked）金额。
 func (s *AccountService) GetBalances() (map[string]BalanceInfo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -168,8 +167,8 @@ func (s *AccountService) GetBalances() (map[string]BalanceInfo, error) {
 	return result, nil
 }
 
-// GetTotalAssetValue calculates the total asset value in USDT by converting
-// all balances using current market prices. USDT balances are counted at 1:1.
+// GetTotalAssetValue 通过使用当前市场价格将所有余额转换为 USDT 来计算总资产价值。
+// USDT 余额按 1:1 计算。
 func (s *AccountService) GetTotalAssetValue() (decimal.Decimal, error) {
 	s.mu.RLock()
 	balances := make(map[string]BalanceInfo, len(s.cache))
@@ -190,7 +189,7 @@ func (s *AccountService) GetTotalAssetValue() (decimal.Decimal, error) {
 			continue
 		}
 
-		// Get the USDT price for this asset (e.g., BTCUSDT).
+		// 获取该资产的 USDT 价格（例如 BTCUSDT）。
 		symbol := asset + "USDT"
 		price, err := s.market.GetCurrentPrice(symbol)
 		if err != nil {
@@ -205,9 +204,9 @@ func (s *AccountService) GetTotalAssetValue() (decimal.Decimal, error) {
 	return total, nil
 }
 
-// GetPositionPnL calculates the realized profit/loss for a given trading pair
-// from all historical trades, with fee deduction.
-// PnL = SellAmount - BuyAmount - TotalFees
+// GetPositionPnL 从所有历史交易中计算指定交易对的已实现盈亏，
+// 包含手续费扣除。
+// 盈亏 = 卖出金额 - 买入金额 - 总手续费
 func (s *AccountService) GetPositionPnL(symbol string) (*PnL, error) {
 	if symbol == "" {
 		return nil, apperrors.NewAppError(apperrors.ErrValidation,
@@ -235,13 +234,13 @@ func (s *AccountService) GetPositionPnL(symbol string) (*PnL, error) {
 		pnl.TotalFees = pnl.TotalFees.Add(t.Fee)
 	}
 
-	// Realized PnL = Sell revenue - Buy cost - Fees
+	// 已实现盈亏 = 卖出收入 - 买入成本 - 手续费
 	pnl.RealizedPnL = pnl.SellAmount.Sub(pnl.BuyAmount).Sub(pnl.TotalFees)
 
 	return pnl, nil
 }
 
-// GetAssetHistory returns historical account snapshots within the given time range.
+// GetAssetHistory 返回指定时间范围内的历史账户快照。
 func (s *AccountService) GetAssetHistory(start, end time.Time) ([]model.AccountSnapshot, error) {
 	snapshots, err := s.accountStore.GetByTimeRange(start, end)
 	if err != nil {
@@ -251,9 +250,9 @@ func (s *AccountService) GetAssetHistory(start, end time.Time) ([]model.AccountS
 	return snapshots, nil
 }
 
-// GetFeeStats returns cumulative fee statistics from all trade records.
+// GetFeeStats 从所有交易记录中返回累计手续费统计信息。
 func (s *AccountService) GetFeeStats() (*FeeStatistics, error) {
-	// Fetch all trades (no filter).
+	// 获取所有交易（无过滤条件）。
 	trades, err := s.tradeStore.GetByFilter(store.TradeFilter{})
 	if err != nil {
 		return nil, apperrors.NewAppError(apperrors.ErrDatabase,

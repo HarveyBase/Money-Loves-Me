@@ -14,7 +14,7 @@ import (
 	"pgregory.net/rapid"
 )
 
-// --- Mock Store ---
+// --- 模拟存储 ---
 
 type mockStore struct {
 	mu            sync.Mutex
@@ -63,7 +63,7 @@ func (m *mockStore) GetByFilter(filter NotificationFilter) ([]model.Notification
 		}
 		result = append(result, n)
 	}
-	// Return in reverse chronological order.
+	// 按时间倒序返回。
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].CreatedAt.After(result[j].CreatedAt)
 	})
@@ -85,7 +85,7 @@ func (m *mockStore) MarkAsRead(id int64) error {
 	return fmt.Errorf("notification %d not found", id)
 }
 
-// --- Mock WSPusher ---
+// --- 模拟 WebSocket 推送器 ---
 
 type mockWSPusher struct {
 	mu      sync.Mutex
@@ -107,7 +107,7 @@ func (m *mockWSPusher) PushNotification(n *model.Notification) error {
 	return nil
 }
 
-// --- Tests ---
+// --- 测试 ---
 
 func TestNewNotificationService_AllEventsEnabledByDefault(t *testing.T) {
 	svc := NewNotificationService(newMockStore(), nil)
@@ -126,7 +126,7 @@ func TestSend_StoresAndPushesNotification(t *testing.T) {
 	err := svc.Send(EventOrderFilled, "Order Filled", "BTC/USDT order filled at 50000")
 	require.NoError(t, err)
 
-	// Verify stored.
+	// 验证已存储。
 	assert.Len(t, store.notifications, 1)
 	n := store.notifications[0]
 	assert.Equal(t, string(EventOrderFilled), n.EventType)
@@ -135,7 +135,7 @@ func TestSend_StoresAndPushesNotification(t *testing.T) {
 	assert.False(t, n.IsRead)
 	assert.False(t, n.CreatedAt.IsZero())
 
-	// Verify pushed via WebSocket.
+	// 验证已通过 WebSocket 推送。
 	assert.Len(t, ws.pushed, 1)
 }
 
@@ -150,7 +150,7 @@ func TestSend_DisabledEventTypeSkipped(t *testing.T) {
 	ws := newMockWSPusher()
 	svc := NewNotificationService(store, ws)
 
-	// Disable ORDER_FILLED events.
+	// 禁用 ORDER_FILLED 事件。
 	err := svc.SetEventFilter(map[EventType]bool{EventOrderFilled: false})
 	require.NoError(t, err)
 
@@ -206,7 +206,7 @@ func TestGetNotifications_ReturnsInReverseChronologicalOrder(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, results, 5)
 
-	// Verify reverse chronological order.
+	// 验证按时间倒序排列。
 	for i := 1; i < len(results); i++ {
 		assert.True(t, results[i-1].CreatedAt.After(results[i].CreatedAt) ||
 			results[i-1].CreatedAt.Equal(results[i].CreatedAt))
@@ -244,13 +244,13 @@ func TestMarkAsRead(t *testing.T) {
 func TestSetEventFilter_PartialUpdate(t *testing.T) {
 	svc := NewNotificationService(newMockStore(), nil)
 
-	// Disable one event type.
+	// 禁用一个事件类型。
 	err := svc.SetEventFilter(map[EventType]bool{EventRiskAlert: false})
 	require.NoError(t, err)
 
 	filter := svc.GetEventFilter()
 	assert.False(t, filter[EventRiskAlert])
-	// Others remain enabled.
+	// 其他事件类型保持启用。
 	assert.True(t, filter[EventOrderFilled])
 	assert.True(t, filter[EventSignalTriggered])
 }
@@ -290,7 +290,7 @@ func TestSend_EachEventTypeContainsTimestampAndDescription(t *testing.T) {
 	}
 }
 
-// --- Property-Based Tests ---
+// --- 属性测试 ---
 
 // Feature: binance-trading-system, Property 17: 通知时间倒序和事件过滤
 // Validates: Requirements 8.4, 8.5
@@ -301,12 +301,12 @@ func TestProperty17_NotificationOrderAndEventFilter(t *testing.T) {
 
 		allTypes := AllEventTypes()
 
-		// Generate a random number of notifications (2..20) with varying timestamps and event types.
+		// 生成随机数量的通知（2..20），具有不同的时间戳和事件类型。
 		count := rapid.IntRange(2, 20).Draw(t, "count")
 		baseTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
 		for i := 0; i < count; i++ {
-			// Random offset in seconds to create distinct timestamps.
+			// 随机偏移秒数以创建不同的时间戳。
 			offsetSec := rapid.IntRange(0, 100000).Draw(t, fmt.Sprintf("offset_%d", i))
 			eventIdx := rapid.IntRange(0, len(allTypes)-1).Draw(t, fmt.Sprintf("eventIdx_%d", i))
 			et := allTypes[eventIdx]
@@ -321,7 +321,7 @@ func TestProperty17_NotificationOrderAndEventFilter(t *testing.T) {
 			}
 		}
 
-		// Part 1: Verify GetNotifications returns results in strict reverse chronological order.
+		// 第一部分：验证 GetNotifications 返回严格按时间倒序排列的结果。
 		results, err := svc.GetNotifications(NotificationFilter{})
 		if err != nil {
 			t.Fatalf("GetNotifications failed: %v", err)
@@ -337,7 +337,7 @@ func TestProperty17_NotificationOrderAndEventFilter(t *testing.T) {
 			}
 		}
 
-		// Part 2: Pick a random event type to filter by and verify only matching notifications are returned.
+		// 第二部分：随机选择一个事件类型进行过滤，验证只返回匹配的通知。
 		filterIdx := rapid.IntRange(0, len(allTypes)-1).Draw(t, "filterEventIdx")
 		filterType := allTypes[filterIdx]
 
@@ -346,14 +346,14 @@ func TestProperty17_NotificationOrderAndEventFilter(t *testing.T) {
 			t.Fatalf("GetNotifications with filter failed: %v", err)
 		}
 
-		// All returned notifications must match the filtered event type.
+		// 所有返回的通知必须匹配过滤的事件类型。
 		for _, n := range filtered {
 			if n.EventType != string(filterType) {
 				t.Fatalf("filtered results should only contain event type %s, got %s", filterType, n.EventType)
 			}
 		}
 
-		// Filtered results must also be in reverse chronological order.
+		// 过滤后的结果也必须按时间倒序排列。
 		for i := 1; i < len(filtered); i++ {
 			if filtered[i-1].CreatedAt.Before(filtered[i].CreatedAt) {
 				t.Fatalf("filtered notifications not in reverse chronological order: index %d (%v) < index %d (%v)",
@@ -361,7 +361,7 @@ func TestProperty17_NotificationOrderAndEventFilter(t *testing.T) {
 			}
 		}
 
-		// Count of filtered results must match the actual count of that event type in the store.
+		// 过滤结果的数量必须与存储中该事件类型的实际数量一致。
 		expectedCount := 0
 		for _, n := range store.notifications {
 			if n.EventType == string(filterType) {
@@ -383,55 +383,55 @@ func TestProperty18_EventTriggersNotificationGeneration(t *testing.T) {
 
 		allTypes := AllEventTypes()
 
-		// Pick a random event type from all defined types.
+		// 从所有已定义的类型中随机选择一个事件类型。
 		eventIdx := rapid.IntRange(0, len(allTypes)-1).Draw(t, "eventIdx")
 		eventType := allTypes[eventIdx]
 
-		// Generate a random non-empty title and description.
+		// 生成随机的非空标题和描述。
 		title := rapid.StringMatching(`[A-Za-z][A-Za-z0-9 ]{0,49}`).Draw(t, "title")
 		description := rapid.StringMatching(`[A-Za-z][A-Za-z0-9 .,!]{0,99}`).Draw(t, "description")
 
 		beforeSend := time.Now()
 
-		// Trigger the event by calling Send.
+		// 通过调用 Send 触发事件。
 		err := svc.Send(eventType, title, description)
 		if err != nil {
 			t.Fatalf("Send failed: %v", err)
 		}
 
-		// Verify exactly one notification was stored.
+		// 验证恰好存储了一条通知。
 		if len(store.notifications) != 1 {
 			t.Fatalf("expected 1 notification, got %d", len(store.notifications))
 		}
 
 		n := store.notifications[0]
 
-		// Verify the notification has a non-zero timestamp.
+		// 验证通知具有非零时间戳。
 		if n.CreatedAt.IsZero() {
 			t.Fatal("notification timestamp must not be zero")
 		}
 
-		// Verify the timestamp is reasonable (not before we called Send).
+		// 验证时间戳合理（不早于调用 Send 的时间）。
 		if n.CreatedAt.Before(beforeSend.Add(-time.Second)) {
 			t.Fatalf("notification timestamp %v is before send time %v", n.CreatedAt, beforeSend)
 		}
 
-		// Verify the event type matches.
+		// 验证事件类型匹配。
 		if n.EventType != string(eventType) {
 			t.Fatalf("expected event type %s, got %s", eventType, n.EventType)
 		}
 
-		// Verify the description is non-empty.
+		// 验证描述非空。
 		if n.Description == nil || *n.Description == "" {
 			t.Fatal("notification description must not be empty")
 		}
 
-		// Verify the description matches what was sent.
+		// 验证描述与发送的内容一致。
 		if *n.Description != description {
 			t.Fatalf("expected description %q, got %q", description, *n.Description)
 		}
 
-		// Verify the title matches.
+		// 验证标题匹配。
 		if n.Title != title {
 			t.Fatalf("expected title %q, got %q", title, n.Title)
 		}

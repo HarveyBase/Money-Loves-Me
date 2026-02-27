@@ -14,9 +14,9 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// --- Mock implementations ---
+// --- Mock 实现 ---
 
-// mockBinanceClient implements BinanceOrderClient for testing.
+// mockBinanceClient 实现 BinanceOrderClient 用于测试。
 type mockBinanceClient struct {
 	createResp *binance.OrderResponse
 	createErr  error
@@ -32,7 +32,7 @@ func (m *mockBinanceClient) CancelOrder(symbol string, orderID int64) (*binance.
 	return m.cancelResp, m.cancelErr
 }
 
-// mockRiskChecker implements RiskChecker for testing.
+// mockRiskChecker 实现 RiskChecker 用于测试。
 type mockRiskChecker struct {
 	err error
 }
@@ -41,7 +41,7 @@ func (m *mockRiskChecker) CheckOrder(symbol string, amount, totalAssetValue deci
 	return m.err
 }
 
-// mockAccountValuer implements AccountValuer for testing.
+// mockAccountValuer 实现 AccountValuer 用于测试。
 type mockAccountValuer struct {
 	value decimal.Decimal
 	err   error
@@ -51,7 +51,7 @@ func (m *mockAccountValuer) GetTotalAssetValue() (decimal.Decimal, error) {
 	return m.value, m.err
 }
 
-// mockOrderStore implements OrderStoreInterface for testing.
+// mockOrderStore 实现 OrderStoreInterface 用于测试。
 type mockOrderStore struct {
 	orders  []model.Order
 	nextID  int64
@@ -110,7 +110,7 @@ func (m *mockOrderStore) GetByFilter(filter store.OrderFilter) ([]model.Order, e
 	return result, nil
 }
 
-// mockTradeStore implements TradeStoreInterface for testing.
+// mockTradeStore 实现 TradeStoreInterface 用于测试。
 type mockTradeStore struct {
 	trades []model.Trade
 	nextID int64
@@ -151,7 +151,7 @@ func (m *mockTradeStore) GetByFilter(filter store.TradeFilter) ([]model.Trade, e
 	return result, nil
 }
 
-// --- Helper to build a standard test OrderManager ---
+// --- 构建标准测试 OrderManager 的辅助函数 ---
 
 func newTestOrderManager(
 	client BinanceOrderClient,
@@ -164,7 +164,7 @@ func newTestOrderManager(
 	return om, orderStore, tradeStore
 }
 
-// --- Tests ---
+// --- 测试 ---
 
 func TestSubmitOrder_Success(t *testing.T) {
 	binanceID := int64(12345)
@@ -209,10 +209,10 @@ func TestSubmitOrder_Success(t *testing.T) {
 	assert.Equal(t, "ma_cross", order.StrategyName)
 	assert.True(t, order.Fee.GreaterThan(decimal.Zero))
 
-	// Verify order was persisted.
+	// 验证订单已持久化。
 	assert.Len(t, orderStore.orders, 1)
 
-	// Verify trade was persisted with decision reason.
+	// 验证交易记录已持久化并包含决策原因。
 	assert.Len(t, tradeStore.trades, 1)
 	trade := tradeStore.trades[0]
 	assert.Equal(t, order.ID, trade.OrderID)
@@ -221,14 +221,14 @@ func TestSubmitOrder_Success(t *testing.T) {
 	assert.Equal(t, "BNB", trade.FeeAsset)
 	assert.Equal(t, "ma_cross", trade.StrategyName)
 
-	// Verify decision reason JSON.
+	// 验证决策原因 JSON。
 	var dr model.DecisionReasonJSON
 	err = json.Unmarshal(trade.DecisionReason, &dr)
 	require.NoError(t, err)
 	assert.Equal(t, "MA7 crossed above MA25", dr.TriggerRule)
 	assert.Equal(t, "uptrend", dr.MarketState)
 
-	// Verify active order tracking.
+	// 验证活跃订单跟踪。
 	om.mu.RLock()
 	_, tracked := om.activeOrders[binanceID]
 	om.mu.RUnlock()
@@ -257,7 +257,7 @@ func TestSubmitOrder_RiskCheckFails(t *testing.T) {
 	order, err := om.SubmitOrder(req, SignalReason{})
 	assert.Error(t, err)
 	assert.Nil(t, order)
-	assert.Len(t, orderStore.orders, 0) // No order should be persisted.
+	assert.Len(t, orderStore.orders, 0) // 不应持久化任何订单。
 }
 
 func TestSubmitOrder_BinanceError(t *testing.T) {
@@ -295,7 +295,7 @@ func TestCancelOrder_Success(t *testing.T) {
 
 	om, orderStore, _ := newTestOrderManager(client, nil, nil)
 
-	// Pre-populate an active order.
+	// 预填充一个活跃订单。
 	order := &model.Order{
 		Symbol:         "BTCUSDT",
 		Side:           "BUY",
@@ -316,7 +316,7 @@ func TestCancelOrder_Success(t *testing.T) {
 	err := om.CancelOrder("BTCUSDT", binanceID)
 	require.NoError(t, err)
 
-	// Verify order removed from active tracking.
+	// 验证订单已从活跃跟踪中移除。
 	om.mu.RLock()
 	_, tracked := om.activeOrders[binanceID]
 	om.mu.RUnlock()
@@ -343,7 +343,7 @@ func TestGetActiveOrders(t *testing.T) {
 	binID2 := int64(2)
 	binID3 := int64(3)
 
-	// Create orders with different statuses.
+	// 创建不同状态的订单。
 	_ = orderStore.Create(&model.Order{
 		Symbol: "BTCUSDT", Status: OrderStatusNew,
 		BinanceOrderID: &binID1, CreatedAt: now,
@@ -359,7 +359,7 @@ func TestGetActiveOrders(t *testing.T) {
 
 	active, err := om.GetActiveOrders("BTCUSDT")
 	require.NoError(t, err)
-	assert.Len(t, active, 2) // Only NEW and PARTIALLY_FILLED.
+	assert.Len(t, active, 2) // 仅 NEW 和 PARTIALLY_FILLED。
 }
 
 func TestGetOrderHistory_FilterBySymbolAndTime(t *testing.T) {
@@ -379,13 +379,13 @@ func TestGetOrderHistory_FilterBySymbolAndTime(t *testing.T) {
 		BinanceOrderID: &binID2, CreatedAt: now,
 	})
 
-	// Filter by symbol.
+	// 按交易对过滤。
 	orders, err := om.GetOrderHistory(OrderFilter{Symbol: "BTCUSDT"})
 	require.NoError(t, err)
 	assert.Len(t, orders, 1)
 	assert.Equal(t, "BTCUSDT", orders[0].Symbol)
 
-	// Filter by time range.
+	// 按时间范围过滤。
 	orders, err = om.GetOrderHistory(OrderFilter{
 		Start: now.Add(-30 * time.Minute),
 		End:   now.Add(1 * time.Minute),

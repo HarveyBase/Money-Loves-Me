@@ -11,8 +11,8 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// GetKlines fetches candlestick (kline) data for the given symbol and interval.
-// startTime and endTime are Unix millisecond timestamps; pass 0 to omit.
+// GetKlines 获取给定交易对和时间间隔的 K 线（蜡烛图）数据。
+// startTime 和 endTime 是 Unix 毫秒时间戳；传入 0 表示省略。
 func (c *BinanceClient) GetKlines(symbol, interval string, startTime, endTime int64) ([]Kline, error) {
 	params := url.Values{}
 	params.Set("symbol", symbol)
@@ -49,7 +49,7 @@ func (c *BinanceClient) GetKlines(symbol, interval string, startTime, endTime in
 	return klines, nil
 }
 
-// CreateOrder submits a new order to Binance.
+// CreateOrder 向 Binance 提交一个新订单。
 func (c *BinanceClient) CreateOrder(req CreateOrderRequest) (*OrderResponse, error) {
 	params := url.Values{}
 	params.Set("symbol", req.Symbol)
@@ -79,7 +79,7 @@ func (c *BinanceClient) CreateOrder(req CreateOrderRequest) (*OrderResponse, err
 	return &resp, nil
 }
 
-// CancelOrder cancels an active order on Binance.
+// CancelOrder 取消 Binance 上的一个活跃订单。
 func (c *BinanceClient) CancelOrder(symbol string, orderID int64) (*OrderResponse, error) {
 	params := url.Values{}
 	params.Set("symbol", symbol)
@@ -97,7 +97,7 @@ func (c *BinanceClient) CancelOrder(symbol string, orderID int64) (*OrderRespons
 	return &resp, nil
 }
 
-// GetAccountInfo retrieves the current account information (balances, permissions).
+// GetAccountInfo 获取当前账户信息（余额、权限）。
 func (c *BinanceClient) GetAccountInfo() (*AccountInfo, error) {
 	body, err := c.doSignedRequest("GET", "/api/v3/account", nil)
 	if err != nil {
@@ -111,7 +111,7 @@ func (c *BinanceClient) GetAccountInfo() (*AccountInfo, error) {
 	return &info, nil
 }
 
-// GetExchangeInfo retrieves the exchange trading rules and symbol information.
+// GetExchangeInfo 获取交易所的交易规则和交易对信息。
 func (c *BinanceClient) GetExchangeInfo() (*ExchangeInfo, error) {
 	body, err := c.doPublicRequest("/api/v3/exchangeInfo", nil)
 	if err != nil {
@@ -125,7 +125,7 @@ func (c *BinanceClient) GetExchangeInfo() (*ExchangeInfo, error) {
 	return &info, nil
 }
 
-// GetOrderBook retrieves the order book depth for a symbol.
+// GetOrderBook 获取指定交易对的订单簿深度数据。
 func (c *BinanceClient) GetOrderBook(symbol string, limit int) (*OrderBook, error) {
 	params := url.Values{}
 	params.Set("symbol", symbol)
@@ -152,7 +152,7 @@ func (c *BinanceClient) GetOrderBook(symbol string, limit int) (*OrderBook, erro
 	return book, nil
 }
 
-// --- helpers ---
+// --- 辅助函数 ---
 
 func parseKlineRow(r []interface{}) (Kline, error) {
 	openTime, err := toInt64(r[0])

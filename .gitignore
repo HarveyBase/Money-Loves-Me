@@ -21,6 +21,10 @@ profile.cov
 
 # Local config overrides (template config.yaml should be committed)
 configs/config.local.yaml
+configs/config.dev.yaml
+
+# SQLite data
+data/
 
 # Env
 .env

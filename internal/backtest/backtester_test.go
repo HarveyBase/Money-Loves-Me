@@ -12,7 +12,7 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// mockKlineProvider returns pre-configured klines.
+// mockKlineProvider 返回预配置的 K 线数据。
 type mockKlineProvider struct {
 	klines []binance.Kline
 }
@@ -21,7 +21,7 @@ func (m *mockKlineProvider) GetHistoricalKlines(symbol, interval string, start, 
 	return m.klines, nil
 }
 
-// alternatingStrategy generates alternating BUY/SELL signals for testing.
+// alternatingStrategy 生成交替的买入/卖出信号用于测试。
 type alternatingStrategy struct {
 	callCount int
 	price     decimal.Decimal
@@ -71,12 +71,12 @@ func generateTestKlines(n int, basePrice float64) []binance.Kline {
 }
 
 // Feature: binance-trading-system, Property 19: 回测手续费计算正确性
-// For any backtest trade, the fee equals the trade amount times the fee rate;
-// the total fees equal the sum of all individual trade fees.
+// 对于任何回测交易，手续费等于交易金额乘以费率；
+// 总手续费等于所有单笔交易手续费之和。
 // **Validates: Requirements 10.2**
 func TestProperty19_BacktestFeeCalculation(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
-		// Generate random fee rate and trade parameters
+		// 生成随机费率和交易参数
 		feeRateFloat := rapid.Float64Range(0.0001, 0.01).Draw(t, "feeRate")
 		feeRate := decimal.NewFromFloat(feeRateFloat)
 		numTrades := rapid.IntRange(1, 20).Draw(t, "numTrades")
@@ -88,7 +88,7 @@ func TestProperty19_BacktestFeeCalculation(t *testing.T) {
 			amount := decimal.NewFromFloat(rapid.Float64Range(10, 10000).Draw(t, "amount"))
 			fee := CalculateFee(amount, feeRate)
 
-			// Verify: fee == amount * feeRate
+			// 验证：手续费 == 金额 * 费率
 			expected := amount.Mul(feeRate)
 			assert.True(t, fee.Equal(expected),
 				"fee (%s) should equal amount (%s) * feeRate (%s) = %s",
@@ -98,7 +98,7 @@ func TestProperty19_BacktestFeeCalculation(t *testing.T) {
 			expectedTotalFee = expectedTotalFee.Add(fee)
 		}
 
-		// Verify: total fees == sum of individual fees
+		// 验证：总手续费 == 各笔手续费之和
 		actualTotal := decimal.Zero
 		for _, tr := range trades {
 			actualTotal = actualTotal.Add(tr.Fee)
@@ -110,8 +110,8 @@ func TestProperty19_BacktestFeeCalculation(t *testing.T) {
 }
 
 // Feature: binance-trading-system, Property 20: 回测报告指标一致性
-// Net profit equals total return * initial capital; win rate equals winning trades / total sell trades;
-// total trades equals the length of the trades list.
+// 净利润等于总收益率乘以初始资金；胜率等于盈利交易数除以总卖出交易数；
+// 总交易数等于交易列表的长度。
 // **Validates: Requirements 10.3**
 func TestProperty20_BacktestReportMetricConsistency(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
@@ -146,11 +146,11 @@ func TestProperty20_BacktestReportMetricConsistency(t *testing.T) {
 			return
 		}
 
-		// Property: TotalTrades == len(Trades)
+		// 属性：TotalTrades == len(Trades)
 		assert.Equal(t, result.TotalTrades, len(result.Trades),
 			"TotalTrades (%d) should equal len(Trades) (%d)", result.TotalTrades, len(result.Trades))
 
-		// Property: NetProfit == TotalReturn * InitialCap
+		// 属性：NetProfit == TotalReturn * InitialCap
 		expectedNet := result.TotalReturn.Mul(cfg.InitialCap)
 		diff := result.NetProfit.Sub(expectedNet).Abs()
 		tolerance := decimal.NewFromFloat(0.01)
@@ -159,7 +159,7 @@ func TestProperty20_BacktestReportMetricConsistency(t *testing.T) {
 			result.NetProfit.String(), result.TotalReturn.String(), cfg.InitialCap.String(),
 			expectedNet.String(), diff.String())
 
-		// Property: TotalFees == sum of individual trade fees
+		// 属性：TotalFees == 各笔交易手续费之和
 		sumFees := decimal.Zero
 		for _, tr := range result.Trades {
 			sumFees = sumFees.Add(tr.Fee)
@@ -168,7 +168,7 @@ func TestProperty20_BacktestReportMetricConsistency(t *testing.T) {
 			"TotalFees (%s) should equal sum of trade fees (%s)",
 			result.TotalFees.String(), sumFees.String())
 
-		// Property: WinRate == wins / sellCount
+		// 属性：WinRate == 盈利次数 / 卖出次数
 		sellCount := 0
 		wins := 0
 		for _, tr := range result.Trades {
@@ -189,30 +189,30 @@ func TestProperty20_BacktestReportMetricConsistency(t *testing.T) {
 }
 
 // Feature: binance-trading-system, Property 21: 回测滑点模拟
-// For any backtest trade, the actual execution price differs from the signal price
-// by exactly the slippage percentage times the signal price.
-// Buy: exec = signal + signal*slippage, Sell: exec = signal - signal*slippage
+// 对于任何回测交易，实际执行价格与信号价格的差异
+// 恰好等于滑点百分比乘以信号价格。
+// 买入：执行价 = 信号价 + 信号价*滑点，卖出：执行价 = 信号价 - 信号价*滑点
 // **Validates: Requirements 10.5**
 func TestProperty21_BacktestSlippageSimulation(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		signalPrice := decimal.NewFromFloat(rapid.Float64Range(10, 100000).Draw(t, "signalPrice"))
 		slippage := decimal.NewFromFloat(rapid.Float64Range(0, 0.05).Draw(t, "slippage"))
 
-		// Test BUY slippage: exec price should be higher
+		// 测试买入滑点：执行价格应更高
 		buyExec := ApplySlippage(signalPrice, slippage, "BUY")
 		expectedBuy := signalPrice.Add(signalPrice.Mul(slippage))
 		assert.True(t, buyExec.Equal(expectedBuy),
 			"BUY exec price (%s) should equal signal (%s) + signal*slippage (%s) = %s",
 			buyExec.String(), signalPrice.String(), slippage.String(), expectedBuy.String())
 
-		// Test SELL slippage: exec price should be lower
+		// 测试卖出滑点：执行价格应更低
 		sellExec := ApplySlippage(signalPrice, slippage, "SELL")
 		expectedSell := signalPrice.Sub(signalPrice.Mul(slippage))
 		assert.True(t, sellExec.Equal(expectedSell),
 			"SELL exec price (%s) should equal signal (%s) - signal*slippage (%s) = %s",
 			sellExec.String(), signalPrice.String(), slippage.String(), expectedSell.String())
 
-		// The difference should be exactly slippage * signalPrice
+		// 差值应恰好等于滑点 * 信号价格
 		buyDiff := buyExec.Sub(signalPrice)
 		sellDiff := signalPrice.Sub(sellExec)
 		expectedDiff := signalPrice.Mul(slippage)

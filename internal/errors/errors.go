@@ -2,7 +2,7 @@ package errors
 
 import "fmt"
 
-// ErrorCode represents categorized error codes for the trading system.
+// ErrorCode 表示交易系统的分类错误码。
 type ErrorCode int
 
 const (
@@ -15,7 +15,7 @@ const (
 	ErrBinanceAPI  ErrorCode = 7000
 )
 
-// AppError is the unified error type used across all modules.
+// AppError 是所有模块使用的统一错误类型。
 type AppError struct {
 	Code    ErrorCode
 	Message string
@@ -23,7 +23,7 @@ type AppError struct {
 	Module  string
 }
 
-// Error satisfies the error interface.
+// Error 实现 error 接口。
 func (e *AppError) Error() string {
 	if e.Cause != nil {
 		return fmt.Sprintf("[%s] %d: %s: %v", e.Module, e.Code, e.Message, e.Cause)
@@ -31,12 +31,12 @@ func (e *AppError) Error() string {
 	return fmt.Sprintf("[%s] %d: %s", e.Module, e.Code, e.Message)
 }
 
-// Unwrap returns the underlying cause for errors.Is / errors.As support.
+// Unwrap 返回底层原因错误，以支持 errors.Is / errors.As。
 func (e *AppError) Unwrap() error {
 	return e.Cause
 }
 
-// NewAppError creates a new AppError.
+// NewAppError 创建一个新的 AppError。
 func NewAppError(code ErrorCode, message, module string, cause error) *AppError {
 	return &AppError{
 		Code:    code,
@@ -46,7 +46,7 @@ func NewAppError(code ErrorCode, message, module string, cause error) *AppError 
 	}
 }
 
-// Is reports whether the target error has the same error code.
+// Is 报告目标错误是否具有相同的错误码。
 func (e *AppError) Is(target error) bool {
 	t, ok := target.(*AppError)
 	if !ok {

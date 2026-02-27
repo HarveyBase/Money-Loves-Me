@@ -13,20 +13,20 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-// WSMessage represents a WebSocket message.
+// WSMessage 表示一条 WebSocket 消息。
 type WSMessage struct {
-	Type string      `json:"type"` // "market", "order", "notification"
+	Type string      `json:"type"` // "market"、"order"、"notification"
 	Data interface{} `json:"data"`
 }
 
-// WSClient represents a connected WebSocket client.
+// WSClient 表示一个已连接的 WebSocket 客户端。
 type WSClient struct {
 	conn *websocket.Conn
 	send chan []byte
 	hub  *WebSocketHub
 }
 
-// WebSocketHub manages all WebSocket client connections.
+// WebSocketHub 管理所有 WebSocket 客户端连接。
 type WebSocketHub struct {
 	mu         sync.RWMutex
 	clients    map[*WSClient]bool
@@ -35,7 +35,7 @@ type WebSocketHub struct {
 	unregister chan *WSClient
 }
 
-// NewWebSocketHub creates a new WebSocketHub.
+// NewWebSocketHub 创建一个新的 WebSocketHub。
 func NewWebSocketHub() *WebSocketHub {
 	return &WebSocketHub{
 		clients:    make(map[*WSClient]bool),
@@ -45,7 +45,7 @@ func NewWebSocketHub() *WebSocketHub {
 	}
 }
 
-// Run starts the hub's event loop.
+// Run 启动 Hub 的事件循环。
 func (h *WebSocketHub) Run() {
 	for {
 		select {
@@ -75,7 +75,7 @@ func (h *WebSocketHub) Run() {
 	}
 }
 
-// Broadcast sends a message to all connected clients.
+// Broadcast 向所有已连接的客户端发送消息。
 func (h *WebSocketHub) Broadcast(msg WSMessage) {
 	data, err := json.Marshal(msg)
 	if err != nil {
@@ -84,14 +84,14 @@ func (h *WebSocketHub) Broadcast(msg WSMessage) {
 	h.broadcast <- data
 }
 
-// ClientCount returns the number of connected clients.
+// ClientCount 返回已连接的客户端数量。
 func (h *WebSocketHub) ClientCount() int {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return len(h.clients)
 }
 
-// HandleWebSocket handles WebSocket upgrade requests.
+// HandleWebSocket 处理 WebSocket 升级请求。
 func HandleWebSocket(hub *WebSocketHub) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)

@@ -10,31 +10,31 @@ import (
 	"money-loves-me/pkg/binance"
 )
 
-// SignalHandler is a callback interface for handling generated trading signals.
+// SignalHandler 是处理生成的交易信号的回调接口。
 type SignalHandler interface {
 	HandleSignal(signal Signal) error
 }
 
-// SignalHandlerFunc is an adapter to allow the use of ordinary functions as SignalHandler.
+// SignalHandlerFunc 是一个适配器，允许将普通函数用作 SignalHandler。
 type SignalHandlerFunc func(signal Signal) error
 
 func (f SignalHandlerFunc) HandleSignal(signal Signal) error {
 	return f(signal)
 }
 
-// MarketDataProvider abstracts the market data service for the strategy engine.
+// MarketDataProvider 为策略引擎抽象市场数据服务。
 type MarketDataProvider interface {
 	GetHistoricalKlines(symbol, interval string, start, end time.Time) ([]binance.Kline, error)
 }
 
-// StrategyLogger abstracts logging for the strategy engine.
+// StrategyLogger 为策略引擎抽象日志记录。
 type StrategyLogger interface {
 	Info(msg string, args ...interface{})
 	Warn(msg string, args ...interface{})
 	Error(msg string, args ...interface{})
 }
 
-// StrategyLogEntry records a strategy execution event.
+// StrategyLogEntry 记录一次策略执行事件。
 type StrategyLogEntry struct {
 	Timestamp    time.Time
 	StrategyName string
@@ -43,8 +43,7 @@ type StrategyLogEntry struct {
 	Signal       *Signal
 }
 
-// StrategyEngine manages multiple strategies, evaluates market conditions,
-// and generates fee-aware trading signals.
+// StrategyEngine 管理多个策略，评估市场状况，并生成手续费感知的交易信号。
 type StrategyEngine struct {
 	strategies    []Strategy
 	signalHandler SignalHandler
@@ -52,11 +51,11 @@ type StrategyEngine struct {
 	running       atomic.Bool
 
 	mu         sync.RWMutex
-	logs       map[string][]StrategyLogEntry // strategyName -> log entries
+	logs       map[string][]StrategyLogEntry // 策略名称 -> 日志条目
 	cancelFunc context.CancelFunc
 }
 
-// NewStrategyEngine creates a new StrategyEngine with the given strategies and fee rate.
+// NewStrategyEngine 使用给定的策略和费率创建新的 StrategyEngine。
 func NewStrategyEngine(strategies []Strategy, handler SignalHandler, feeRate FeeRate) *StrategyEngine {
 	return &StrategyEngine{
 		strategies:    strategies,
@@ -66,8 +65,8 @@ func NewStrategyEngine(strategies []Strategy, handler SignalHandler, feeRate Fee
 	}
 }
 
-// Start sets the engine to running state and begins processing market data.
-// It launches a background goroutine that can be stopped via Stop() or context cancellation.
+// Start 将引擎设置为运行状态并开始处理市场数据。
+// 它启动一个后台 goroutine，可通过 Stop() 或上下文取消来停止。
 func (e *StrategyEngine) Start(ctx context.Context) error {
 	if e.running.Load() {
 		return fmt.Errorf("strategy engine is already running")
@@ -80,7 +79,7 @@ func (e *StrategyEngine) Start(ctx context.Context) error {
 	e.cancelFunc = cancel
 	e.mu.Unlock()
 
-	// Background goroutine that stays alive until stopped.
+	// 后台 goroutine，保持运行直到被停止。
 	go func() {
 		<-ctx.Done()
 		e.running.Store(false)
@@ -89,8 +88,8 @@ func (e *StrategyEngine) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop stops the strategy engine from generating new signals.
-// Already submitted orders continue to be tracked.
+// Stop 停止策略引擎生成新信号。
+// 已提交的订单将继续被跟踪。
 func (e *StrategyEngine) Stop() error {
 	if !e.running.Load() {
 		return fmt.Errorf("strategy engine is not running")
@@ -109,14 +108,14 @@ func (e *StrategyEngine) Stop() error {
 	return nil
 }
 
-// IsRunning returns whether the engine is currently running.
+// IsRunning 返回引擎当前是否正在运行。
 func (e *StrategyEngine) IsRunning() bool {
 	return e.running.Load()
 }
 
-// EvaluateMarket runs all strategies against the provided klines for a symbol
-// and returns signals that pass the fee-awareness check.
-// Only signals where expected profit > estimated fee are returned.
+// EvaluateMarket 对指定交易对的 K 线数据运行所有策略，
+// 并返回通过手续费感知检查的信号。
+// 只有预期利润 > 预估手续费的信号才会被返回。
 func (e *StrategyEngine) EvaluateMarket(symbol string, klines []binance.Kline) []Signal {
 	if !e.running.Load() {
 		return nil
@@ -133,10 +132,10 @@ func (e *StrategyEngine) EvaluateMarket(symbol string, klines []binance.Kline) [
 			continue
 		}
 
-		// Fill in the symbol
+		// 填充交易对名称
 		signal.Symbol = symbol
 
-		// Fee-aware filtering: only emit signals where expected profit > fee
+		// 手续费感知过滤：仅发出预期利润 > 手续费的信号
 		if !e.isProfitableAfterFee(strat, signal) {
 			e.appendLog(strat.Name(), symbol,
 				fmt.Sprintf("signal rejected: expected profit does not exceed fee (price=%s, qty=%s)",
@@ -153,7 +152,7 @@ func (e *StrategyEngine) EvaluateMarket(symbol string, klines []binance.Kline) [
 	return signals
 }
 
-// ProcessSignals evaluates market data and sends profitable signals to the handler.
+// ProcessSignals 评估市场数据并将有利可图的信号发送给处理器。
 func (e *StrategyEngine) ProcessSignals(symbol string, klines []binance.Kline) error {
 	signals := e.EvaluateMarket(symbol, klines)
 
@@ -170,20 +169,20 @@ func (e *StrategyEngine) ProcessSignals(symbol string, klines []binance.Kline) e
 	return nil
 }
 
-// isProfitableAfterFee checks if a signal's expected profit exceeds the estimated fee.
-// For a signal to pass, the expected profit margin must be positive after fees.
+// isProfitableAfterFee 检查信号的预期利润是否超过预估手续费。
+// 信号要通过检查，扣除手续费后的预期利润必须为正。
 func (e *StrategyEngine) isProfitableAfterFee(strat Strategy, signal *Signal) bool {
 	if signal.Price.IsZero() || signal.Quantity.IsZero() {
 		return false
 	}
 
-	// Use taker fee rate as the conservative estimate
+	// 使用 taker 费率作为保守估计
 	fee := strat.EstimateFee(signal.Price, signal.Quantity, e.feeRate.Taker)
 
-	// The expected profit must exceed the fee.
+	// 预期利润必须超过手续费。
 	expectedProfit := signal.ExpectedProfit
 
-	// If no explicit expected profit is set, the signal cannot be considered profitable
+	// 如果没有设置明确的预期利润，则该信号不能被视为有利可图
 	if expectedProfit.IsZero() || expectedProfit.IsNegative() {
 		return false
 	}
@@ -191,7 +190,7 @@ func (e *StrategyEngine) isProfitableAfterFee(strat Strategy, signal *Signal) bo
 	return expectedProfit.GreaterThan(fee)
 }
 
-// GetStrategyLogs returns the execution logs for a specific strategy.
+// GetStrategyLogs 返回指定策略的执行日志。
 func (e *StrategyEngine) GetStrategyLogs(strategyName string) []StrategyLogEntry {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
@@ -201,12 +200,12 @@ func (e *StrategyEngine) GetStrategyLogs(strategyName string) []StrategyLogEntry
 	return result
 }
 
-// GetStrategies returns the list of strategies managed by the engine.
+// GetStrategies 返回引擎管理的策略列表。
 func (e *StrategyEngine) GetStrategies() []Strategy {
 	return e.strategies
 }
 
-// appendLog adds a log entry for a strategy.
+// appendLog 为策略添加一条日志条目。
 func (e *StrategyEngine) appendLog(strategyName, symbol, message string, signal *Signal) {
 	entry := StrategyLogEntry{
 		Timestamp:    time.Now(),

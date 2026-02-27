@@ -18,7 +18,7 @@ import (
 	"money-loves-me/internal/logger"
 )
 
-// newTestLogger creates a minimal logger for tests.
+// newTestLogger 为测试创建一个最小化的日志记录器。
 func newTestLogger(t *testing.T) *logger.Logger {
 	t.Helper()
 	l, err := logger.NewLogger("ws-test", config.LogConfig{Level: "DEBUG"})
@@ -28,12 +28,11 @@ func newTestLogger(t *testing.T) *logger.Logger {
 	return l
 }
 
-// upgrader is a default upgrader for test servers.
+// upgrader 是测试服务器使用的默认升级器。
 var upgrader = websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
 
-// startEchoServer starts a WebSocket server that echoes messages back and
-// responds to SUBSCRIBE requests with an ack. It returns the ws:// URL and a
-// cleanup function.
+// startEchoServer 启动一个 WebSocket 服务器，将消息回显并
+// 对 SUBSCRIBE 请求返回确认。返回 ws:// URL 和清理函数。
 func startEchoServer(t *testing.T) (string, func()) {
 	t.Helper()
 
@@ -49,7 +48,7 @@ func startEchoServer(t *testing.T) (string, func()) {
 			if err != nil {
 				return
 			}
-			// Echo back.
+			// 回显消息。
 			_ = conn.WriteMessage(mt, msg)
 		}
 	}))
@@ -58,8 +57,8 @@ func startEchoServer(t *testing.T) (string, func()) {
 	return wsURL, srv.Close
 }
 
-// startStreamServer starts a WebSocket server that simulates Binance combined
-// stream format. It pushes messages via the returned send function.
+// startStreamServer 启动一个模拟 Binance 组合流格式的 WebSocket 服务器。
+// 通过返回的 send 函数推送消息。
 func startStreamServer(t *testing.T) (wsURL string, send func(stream string, data interface{}), cleanup func()) {
 	t.Helper()
 
@@ -76,7 +75,7 @@ func startStreamServer(t *testing.T) (wsURL string, send func(stream string, dat
 		clients = append(clients, conn)
 		mu.Unlock()
 
-		// Read loop to keep connection alive and handle subscribe messages.
+		// 读取循环以保持连接活跃并处理订阅消息。
 		for {
 			_, _, err := conn.ReadMessage()
 			if err != nil {
@@ -153,10 +152,10 @@ func TestWSManager_SubscribeKline(t *testing.T) {
 		t.Fatalf("SubscribeKline failed: %v", err)
 	}
 
-	// Give the connection time to establish.
+	// 等待连接建立。
 	time.Sleep(100 * time.Millisecond)
 
-	// Send a kline event.
+	// 发送一个 K 线事件。
 	send("btcusdt@kline_1m", map[string]interface{}{
 		"s": "BTCUSDT",
 		"k": map[string]interface{}{
@@ -171,7 +170,7 @@ func TestWSManager_SubscribeKline(t *testing.T) {
 		},
 	})
 
-	// Wait for handler to be called.
+	// 等待处理器被调用。
 	time.Sleep(200 * time.Millisecond)
 
 	if received.Load() == 0 {
@@ -259,8 +258,8 @@ func TestWSManager_NilHandlerRejected(t *testing.T) {
 }
 
 func TestWSManager_Reconnect(t *testing.T) {
-	// Start a server, subscribe, then kill the server and restart it.
-	// The manager should reconnect and resubscribe.
+	// 启动一个服务器，订阅，然后关闭服务器并重启。
+	// 管理器应自动重连并重新订阅。
 
 	var mu sync.Mutex
 	var serverConn *websocket.Conn
@@ -280,7 +279,7 @@ func TestWSManager_Reconnect(t *testing.T) {
 			if err != nil {
 				return
 			}
-			// Count SUBSCRIBE messages.
+			// 统计 SUBSCRIBE 消息。
 			var req map[string]interface{}
 			if json.Unmarshal(msg, &req) == nil {
 				if method, ok := req["method"].(string); ok && method == "SUBSCRIBE" {
@@ -308,14 +307,14 @@ func TestWSManager_Reconnect(t *testing.T) {
 		t.Fatal("expected at least one SUBSCRIBE message")
 	}
 
-	// Kill the server-side connection to trigger reconnect.
+	// 关闭服务端连接以触发重连。
 	mu.Lock()
 	if serverConn != nil {
 		_ = serverConn.Close()
 	}
 	mu.Unlock()
 
-	// Wait for reconnect + resubscribe (base delay is 3s, so wait a bit longer).
+	// 等待重连 + 重新订阅（基础延迟为 3 秒，所以多等一会儿）。
 	time.Sleep(5 * time.Second)
 
 	finalSubs := subscribeCount.Load()
@@ -327,13 +326,13 @@ func TestWSManager_Reconnect(t *testing.T) {
 // Feature: binance-trading-system, Property 16: WebSocket 断线重订阅
 // **Validates: Requirements 2.6**
 //
-// For any set of subscribed streams, after a WebSocket disconnect and reconnect,
-// all previously subscribed streams should be automatically resubscribed.
+// 对于任意已订阅的流集合，在 WebSocket 断开并重连后，
+// 所有之前订阅的流应被自动重新订阅。
 func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 	rapid.Check(t, func(rt *rapid.T) {
-		// --- Generate a random set of subscriptions ---
+		// --- 生成一组随机订阅 ---
 
-		// Generate 1-5 kline subscriptions with random symbols and intervals.
+		// 生成 1-5 个随机交易对和时间间隔的 K 线订阅。
 		validIntervals := []string{"1m", "5m", "15m", "1h", "4h", "1d"}
 		numKlines := rapid.IntRange(0, 5).Draw(rt, "numKlines")
 		numOrderBooks := rapid.IntRange(0, 3).Draw(rt, "numOrderBooks")
@@ -344,7 +343,7 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 			interval string
 		}
 
-		// Build unique kline subscriptions.
+		// 构建唯一的 K 线订阅。
 		klineSubs := make([]klineSub, 0, numKlines)
 		klineStreams := make(map[string]bool)
 		for i := 0; i < numKlines; i++ {
@@ -352,13 +351,13 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 			intv := validIntervals[rapid.IntRange(0, len(validIntervals)-1).Draw(rt, fmt.Sprintf("klineInterval_%d", i))]
 			stream := strings.ToLower(sym) + "@kline_" + intv
 			if klineStreams[stream] {
-				continue // skip duplicates
+				continue // 跳过重复项
 			}
 			klineStreams[stream] = true
 			klineSubs = append(klineSubs, klineSub{symbol: sym, interval: intv})
 		}
 
-		// Build unique order book subscriptions.
+		// 构建唯一的订单簿订阅。
 		obSymbols := make([]string, 0, numOrderBooks)
 		obStreams := make(map[string]bool)
 		for i := 0; i < numOrderBooks; i++ {
@@ -376,16 +375,16 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 			totalExpected++
 		}
 
-		// Need at least 1 subscription to test reconnect behavior.
+		// 至少需要 1 个订阅才能测试重连行为。
 		if totalExpected == 0 {
 			return
 		}
 
-		// --- Set up a test server that tracks SUBSCRIBE messages ---
+		// --- 设置一个跟踪 SUBSCRIBE 消息的测试服务器 ---
 
 		var mu sync.Mutex
 		var serverConns []*websocket.Conn
-		var subscribeMessages []string // collect all stream names from SUBSCRIBE requests
+		var subscribeMessages []string // 收集所有 SUBSCRIBE 请求中的流名称
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			conn, err := upgrader.Upgrade(w, r, nil)
@@ -420,7 +419,7 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 		mgr := NewWSManager(wsURL, newTestLogger(t))
 		defer mgr.Close()
 
-		// --- Subscribe all generated streams ---
+		// --- 订阅所有生成的流 ---
 
 		for _, ks := range klineSubs {
 			err := mgr.SubscribeKline(ks.symbol, ks.interval, func(event *WsKlineEvent) {})
@@ -441,16 +440,16 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 			}
 		}
 
-		// Wait for initial subscriptions to be sent.
+		// 等待初始订阅发送完成。
 		time.Sleep(300 * time.Millisecond)
 
-		// Record the subscription set before disconnect.
+		// 记录断开连接前的订阅集合。
 		subsBeforeDisconnect := mgr.Subscriptions()
 		if len(subsBeforeDisconnect) != totalExpected {
 			t.Fatalf("expected %d subscriptions before disconnect, got %d", totalExpected, len(subsBeforeDisconnect))
 		}
 
-		// Record initial subscribe count.
+		// 记录初始订阅计数。
 		mu.Lock()
 		initialSubCount := len(subscribeMessages)
 		mu.Unlock()
@@ -459,7 +458,7 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 			t.Fatalf("expected at least %d initial SUBSCRIBE params, got %d", totalExpected, initialSubCount)
 		}
 
-		// --- Simulate disconnect by closing all server-side connections ---
+		// --- 通过关闭所有服务端连接来模拟断开连接 ---
 		mu.Lock()
 		for _, c := range serverConns {
 			_ = c.Close()
@@ -467,22 +466,22 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 		serverConns = nil
 		mu.Unlock()
 
-		// Wait for reconnect + resubscribe.
-		// The base delay is 3s, so we wait enough for at least one reconnect attempt.
+		// 等待重连 + 重新订阅。
+		// 基础延迟为 3 秒，所以等待足够长的时间以完成至少一次重连尝试。
 		time.Sleep(5 * time.Second)
 
-		// --- Verify: all streams were resubscribed ---
+		// --- 验证：所有流都已重新订阅 ---
 
 		mu.Lock()
 		totalSubParams := len(subscribeMessages)
-		// Collect the resubscribed streams (those after the initial batch).
+		// 收集重新订阅的流（初始批次之后的那些）。
 		resubscribedStreams := make(map[string]bool)
 		for i := initialSubCount; i < totalSubParams; i++ {
 			resubscribedStreams[subscribeMessages[i]] = true
 		}
 		mu.Unlock()
 
-		// The resubscribed set should contain all original streams.
+		// 重新订阅的集合应包含所有原始流。
 		expectedStreams := make(map[string]bool)
 		for stream := range klineStreams {
 			expectedStreams[stream] = true
@@ -500,7 +499,7 @@ func TestProperty16_WebSocketReconnectResubscribe(t *testing.T) {
 			}
 		}
 
-		// Also verify the subscription set on the manager is unchanged.
+		// 同时验证管理器上的订阅集合未发生变化。
 		subsAfterReconnect := mgr.Subscriptions()
 		if len(subsAfterReconnect) != totalExpected {
 			t.Fatalf("expected %d subscriptions after reconnect, got %d", totalExpected, len(subsAfterReconnect))
