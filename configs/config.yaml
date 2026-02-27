@@ -1,0 +1,45 @@
+# Money Loves Me - Binance Trading System Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  mode: "release"  # debug, release, test
+
+binance:
+  api_key: "YOUR_ENCRYPTED_API_KEY"       # AES-256 encrypted
+  secret_key: "YOUR_ENCRYPTED_SECRET_KEY"  # AES-256 encrypted
+  base_url: "https://api.binance.com"
+  ws_url: "wss://stream.binance.com:9443"
+
+database:
+  host: "127.0.0.1"
+  port: 3306
+  user: "trading"
+  password: "YOUR_ENCRYPTED_PASSWORD"  # AES-256 encrypted
+  db_name: "trading_system"
+
+log:
+  level: "INFO"  # DEBUG, INFO, WARN, ERROR
+  file_path: "logs/trading.log"
+  max_size_mb: 100
+  max_age_days: 30
+
+trading:
+  default_pairs:
+    - "BTCUSDT"
+    - "ETHUSDT"
+
+risk:
+  max_order_amount: "1000"    # USDT
+  max_daily_loss: "500"       # USDT
+  stop_loss_percent:
+    BTCUSDT: "0.05"           # 5%
+    ETHUSDT: "0.05"           # 5%
+  max_position_percent:
+    BTCUSDT: "0.3"            # 30%
+    ETHUSDT: "0.3"            # 30%
+
+optimizer:
+  interval: "24h"
+  lookback_days: 30
+  max_param_change: 0.3       # 30%

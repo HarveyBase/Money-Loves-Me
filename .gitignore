@@ -6,7 +6,7 @@
 *.dylib
 *.test
 bin/
-server
+/server
 
 # Go
 go.work
@@ -19,8 +19,8 @@ coverage.*
 *.coverprofile
 profile.cov
 
-# Config with secrets
-configs/config.yaml
+# Local config overrides (template config.yaml should be committed)
+configs/config.local.yaml
 
 # Env
 .env
