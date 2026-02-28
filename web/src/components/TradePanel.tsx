@@ -16,23 +16,47 @@ export default function TradePanel() {
   useEffect(load, [])
 
   return (
-    <div>
-      <h2>交易记录</h2>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        <input placeholder="交易对" value={symbol} onChange={(e) => setSymbol(e.target.value)} />
-        <input placeholder="策略名称" value={strategy} onChange={(e) => setStrategy(e.target.value)} />
-        <button onClick={load}>查询</button>
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title">交易记录</span>
       </div>
-      <table style={{ width: '100%' }}><thead><tr>
-        <th>时间</th><th>交易对</th><th>方向</th><th>价格</th><th>数量</th><th>金额</th><th>手续费</th><th>策略</th><th>决策依据</th>
-      </tr></thead><tbody>
-        {trades.map((t, i) => (
-          <tr key={i}><td>{String(t.executed_at)}</td><td>{String(t.symbol)}</td><td>{String(t.side)}</td>
-            <td>{String(t.price)}</td><td>{String(t.quantity)}</td><td>{String(t.amount)}</td>
-            <td>{String(t.fee)}</td><td>{String(t.strategy_name)}</td>
-            <td><details><summary>详情</summary><pre>{JSON.stringify(t.decision_reason, null, 2)}</pre></details></td></tr>
-        ))}
-      </tbody></table>
+
+      <div className="form-row">
+        <input className="form-input-sm" placeholder="交易对筛选" value={symbol}
+          onChange={(e) => setSymbol(e.target.value)} />
+        <input className="form-input-sm" placeholder="策略名称筛选" value={strategy}
+          onChange={(e) => setStrategy(e.target.value)} />
+        <button className="btn btn-ghost btn-sm" onClick={load}>查询</button>
+      </div>
+
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th><th>交易对</th><th>方向</th><th>价格</th>
+              <th>数量</th><th>金额</th><th>手续费</th><th>策略</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.length === 0 ? (
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>暂无交易记录</td></tr>
+            ) : trades.map((t, i) => (
+              <tr key={i}>
+                <td>{String(t.executed_at)}</td>
+                <td style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{String(t.symbol)}</td>
+                <td className={String(t.side) === 'BUY' ? 'text-green' : 'text-red'}>
+                  {String(t.side) === 'BUY' ? '买入' : '卖出'}
+                </td>
+                <td>{String(t.price)}</td>
+                <td>{String(t.quantity)}</td>
+                <td>{String(t.amount)}</td>
+                <td>{String(t.fee)}</td>
+                <td>{String(t.strategy_name)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }

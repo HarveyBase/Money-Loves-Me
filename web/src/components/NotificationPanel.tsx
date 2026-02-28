@@ -5,31 +5,48 @@ import wsClient from '../services/websocket'
 export default function NotificationPanel() {
   const [notifications, setNotifications] = useState<Record<string, unknown>[]>([])
 
+  const load = () => notificationAPI.list().then((r) => setNotifications(r.data.notifications || []))
+
   useEffect(() => {
-    notificationAPI.list().then((r) => setNotifications(r.data.notifications || []))
-    const handler = () => {
-      notificationAPI.list().then((r) => setNotifications(r.data.notifications || []))
-    }
+    load()
+    const handler = () => load()
     wsClient.on('notification', handler)
     return () => wsClient.off('notification', handler)
   }, [])
 
   const markRead = async (id: string) => {
     await notificationAPI.markRead(id)
-    notificationAPI.list().then((r) => setNotifications(r.data.notifications || []))
+    load()
   }
 
   return (
-    <div>
-      <h2>通知消息</h2>
-      <ul style={{ listStyle: 'none', padding: 0 }}>
-        {notifications.map((n, i) => (
-          <li key={i} style={{ padding: 8, borderBottom: '1px solid #eee', opacity: n.is_read ? 0.6 : 1 }}>
-            <strong>[{String(n.event_type)}]</strong> {String(n.title)} - {String(n.description)}
-            {!n.is_read && <button onClick={() => markRead(String(n.id))} style={{ marginLeft: 8 }}>标记已读</button>}
-          </li>
-        ))}
-      </ul>
+    <div className="card">
+      <div className="card-header">
+        <span className="card-title">通知消息</span>
+      </div>
+      {notifications.length === 0 ? (
+        <div className="empty-state">
+          <div className="icon">🔔</div>
+          <p>暂无通知消息</p>
+        </div>
+      ) : (
+        <div>
+          {notifications.map((n, i) => (
+            <div key={i} className={`notification-item ${n.is_read ? '' : 'unread'}`}>
+              <div className="notification-content">
+                <div className="notification-type">{String(n.event_type)}</div>
+                <div className="notification-title">{String(n.title)}</div>
+                <div className="notification-desc">{String(n.description)}</div>
+              </div>
+              {!n.is_read && (
+                <button className="btn btn-ghost btn-sm" onClick={() => markRead(String(n.id))}>
+                  标记已读
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

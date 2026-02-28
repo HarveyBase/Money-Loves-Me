@@ -10,15 +10,15 @@ import NotificationPanel from '../components/NotificationPanel'
 import TradePanel from '../components/TradePanel'
 
 const tabs = [
-  { key: 'chart', label: 'K线图表' },
-  { key: 'orders', label: '订单管理' },
-  { key: 'account', label: '资产概览' },
-  { key: 'strategy', label: '自动交易' },
-  { key: 'risk', label: '风控设置' },
-  { key: 'backtest', label: '回测结果' },
-  { key: 'optimizer', label: '优化历史' },
-  { key: 'notifications', label: '通知消息' },
-  { key: 'trades', label: '交易记录' },
+  { key: 'chart', label: '📈 行情', icon: '' },
+  { key: 'orders', label: '📋 订单', icon: '' },
+  { key: 'trades', label: '💱 成交', icon: '' },
+  { key: 'account', label: '💰 资产', icon: '' },
+  { key: 'strategy', label: '🤖 策略', icon: '' },
+  { key: 'risk', label: '🛡️ 风控', icon: '' },
+  { key: 'backtest', label: '📊 回测', icon: '' },
+  { key: 'optimizer', label: '⚙️ 优化', icon: '' },
+  { key: 'notifications', label: '🔔 通知', icon: '' },
 ] as const
 
 type TabKey = (typeof tabs)[number]['key']
@@ -32,31 +32,38 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 style={{ margin: 0 }}>币安交易系统</h1>
-        <button onClick={handleLogout}>退出登录</button>
-      </div>
-      <nav style={{ marginBottom: 16, display: 'flex', gap: 8 }} role="tablist">
+    <div className="dashboard">
+      <header className="topbar">
+        <div className="topbar-brand">
+          <span>◈ Money Loves Me</span>
+          <span className="dot" />
+        </div>
+        <div className="topbar-right">
+          <button className="btn btn-ghost btn-sm" onClick={handleLogout}>退出登录</button>
+        </div>
+      </header>
+
+      <nav className="tab-nav" role="tablist">
         {tabs.map((tab) => (
           <button key={tab.key} role="tab" aria-selected={activeTab === tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            style={{ padding: '6px 12px', fontWeight: activeTab === tab.key ? 'bold' : 'normal' }}>
+            className={`tab-btn ${activeTab === tab.key ? 'active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}>
             {tab.label}
           </button>
         ))}
       </nav>
-      <div role="tabpanel">
+
+      <main className="content" role="tabpanel">
         {activeTab === 'chart' && <ChartPanel />}
         {activeTab === 'orders' && <OrderPanel />}
+        {activeTab === 'trades' && <TradePanel />}
         {activeTab === 'account' && <AccountPanel />}
         {activeTab === 'strategy' && <StrategyPanel />}
         {activeTab === 'risk' && <RiskPanel />}
         {activeTab === 'backtest' && <BacktestPanel />}
         {activeTab === 'optimizer' && <OptimizerPanel />}
         {activeTab === 'notifications' && <NotificationPanel />}
-        {activeTab === 'trades' && <TradePanel />}
-      </div>
+      </main>
     </div>
   )
 }
